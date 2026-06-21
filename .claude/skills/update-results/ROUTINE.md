@@ -6,6 +6,9 @@ Nothing lands on `main` unattended.
 - **Schedule:** `15 7 * * *` in local time (Europe/Zurich) = 07:15 local, ≈05:15 UTC.
 - **Repo:** `lejoe/wc26-crystalball` (remote `origin`). Needs `gh` authenticated
   with `repo` scope and push rights in whatever environment runs the routine.
+- **Working dir:** a **dedicated clone** at `~/clones/wc26-routine`, kept separate
+  from your primary checkout so a 07:15 run never disturbs work in progress. If it
+  is missing, `git clone` `origin` there first.
 
 ## Routine prompt (self-contained)
 
@@ -13,8 +16,10 @@ Nothing lands on `main` unattended.
 > repository. Each morning, bring the real match results current and open a pull
 > request for human review. Steps:
 >
-> 1. In a clean checkout, `git checkout main && git pull`. Create a branch
->    `results/YYYY-MM-DD` using today's date (UTC).
+> 1. In the dedicated clone at `~/clones/wc26-routine`, run
+>    `git checkout main && git pull --ff-only`. Create a fresh branch
+>    `results/YYYY-MM-DD-HHMMSS` (today's date + current time, UTC) so repeated
+>    runs on the same day never collide.
 > 2. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
 >    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier,
 >    reads scores from the ESPN scoreboard API (`site.api.espn.com`, Wikipedia
@@ -38,6 +43,9 @@ Nothing lands on `main` unattended.
 
 ## Creating the schedule
 
-Run `/schedule` (cloud routine) or the scheduled-tasks tool with cron `15 7 * * *`
-and the prompt above. Verify the running environment has `gh` auth + push rights
-to `origin` before relying on it.
+Create a **local scheduled task** (the `scheduled-tasks` tool / `/schedule`) with
+cron `15 7 * * *` and the prompt above, pointed at the dedicated clone
+`~/clones/wc26-routine`. It runs in this app under your local `gh` auth, so it
+only fires while the app is open (otherwise on next launch). Each run uses a
+unique `results/YYYY-MM-DD-HHMMSS` branch and opens its own PR, so same-day
+re-runs never collide. Verify `gh` has push rights to `origin`.
