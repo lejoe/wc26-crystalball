@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { FIXTURES, resultKey } from './data/fixtures'
+import { BRACKET_RESULTS } from './data/bracketResults'
 import type { AppState, GroupLetter, Outcome, PredScore, Side } from './types'
 
 function initialState(): AppState {
@@ -58,6 +59,7 @@ export const useStore = create<Store>()(
 
       setWinner: (matchId, side) =>
         set((state) => {
+          if (matchId in BRACKET_RESULTS) return {} // real result locks the pick
           const bracketPredictions = { ...state.bracketPredictions }
           if (side === null || bracketPredictions[matchId] === side) delete bracketPredictions[matchId]
           else bracketPredictions[matchId] = side
