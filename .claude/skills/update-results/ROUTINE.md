@@ -16,18 +16,21 @@ Nothing lands on `main` unattended.
 > 1. In a clean checkout, `git checkout main && git pull`. Create a branch
 >    `results/YYYY-MM-DD` using today's date (UTC).
 > 2. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
->    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier
->    that are confirmed final, fetches real scores from trustworthy current (2026)
->    sources, writes them (group rows by date+teams; knockout by matchId with
->    slot a/b orientation, asserting feeding groups are really complete), fuzzy-
->    flags any drifted team names, gates on `npx tsc --noEmit`, and emits a summary.
+>    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier,
+>    reads scores from the ESPN scoreboard API (`site.api.espn.com`, Wikipedia
+>    fallback), writes only matches ESPN marks `status.type.completed === true`
+>    (group rows by date+teams; knockout by matchId with slot a/b orientation,
+>    asserting feeding groups are really complete), fuzzy-flags any drifted team
+>    names, gates on `npx tsc --noEmit`, and emits a summary.
 > 3. If the skill reports nothing to update, or tsc fails: do **not** open a PR.
->    Notify with the reason (nothing to update / type error + details) and stop.
+>    Notify with the reason (nothing to update / type error + details), delete the
+>    throwaway branch, and stop.
 > 4. Otherwise commit the edits, push the branch, and run `gh pr create` with:
 >    - title `Results update YYYY-MM-DD`
 >    - body: the run summary, then a **Fuzzy matches — confirm before merge**
 >      section listing every `fetched → canonical` mapping, then the diff overview.
-> 5. Notify with the PR link and the summary.
+> 5. Notify with the PR link and the summary. Then `git checkout main` so the
+>    working copy is left on a clean `main`, never on the results branch.
 >
 > Never merge to `main`. Never clear or migrate browser predictions. Never change
 > bracket pick semantics or grade a prediction. The human reviews, confirms any

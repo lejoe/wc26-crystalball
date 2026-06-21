@@ -41,14 +41,30 @@ Files you read for mapping/orientation, never edit here:
 - If nothing is missing, stop: emit a "nothing to update" summary and do not edit.
 
 ### 2. Fetch real results
-- For each missing match, fetch the final score from trustworthy, current (2026)
-  sources. Cross-check at least two when feasible.
-- Any match that is **not yet final** at fetch time (still to kick off, in
-  progress, or otherwise unconfirmed) — today's matches especially: skip it. It
-  stays "still upcoming" and is picked up on the next run. Only write a result
-  you can confirm is the final score.
-- Sources disagree and you cannot reconcile: leave that match unwritten and note
-  the conflict in the summary. Do not guess.
+
+**Primary source — ESPN scoreboard (free, no API key, structured).** For each
+match-day you need a result for, fetch the whole day in one call:
+
+    https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=YYYYMMDD
+
+For each `event` read `competitions[0].competitors[]` — each has `team.displayName`,
+`score`, and `homeAway` (`'home'`/`'away'`) — plus `status.type`.
+
+**The finality gate is a field read, not a judgment.** Write a match **only if
+`status.type.completed === true`**. Anything with `state` `'pre'` (not kicked
+off) or `'in'` (in progress) is skipped → "still upcoming", picked up next run.
+This replaces eyeballing live blogs: ESPN tells you finished-vs-live directly.
+
+**Fallback — Wikipedia.** If ESPN is unreachable, has no event for a match you
+expect, or returns a score you want to second-source, use the per-group article
+`https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_Group_X` (knockout:
+`https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage`); judge
+freshness from its last-edited UTC timestamp. If ESPN and Wikipedia disagree and
+you cannot reconcile, leave the match unwritten and note the conflict. Do not guess.
+
+**Do not** open-endedly web-search and fetch arbitrary domains. The two sources
+above are the entire allowlist (`site.api.espn.com`, `en.wikipedia.org`); fetch
+their known URLs directly so every run hits the same domains.
 
 ### 3. Map each result to its row
 
