@@ -1,0 +1,108 @@
+import { FIXTURES } from './data/fixtures'
+import { GROUPS } from './data/groups'
+import { decidedOutcome, groupStandings, pointsOf } from './standings'
+import type { GroupLetter, Outcome, PredScore } from './types'
+
+type SimOutcome = 'H' | 'D' | 'A'
+
+export type GroupPositions = {
+  /** position (1-based) → teams that can still finish there, ordered by current strength */
+  candidates: Map<number, string[]>
+}
+
+/**
+ * Enumerate every outcome (H/D/A) of a group's undecided matches and collect,
+ * for each team, the set of final positions it can still reach. Tiebreaking
+ * inside a scenario uses points then head-to-head points; ties that would fall
+ * to goal difference stay ambiguous, so a position is only reported as a single
+ * candidate when it is genuinely locked in.
+ */
+export function possibleGroupPositions(
+  group: GroupLetter,
+  predictions: Record<string, Outcome>,
+  predScores: Record<string, PredScore> = {},
+): GroupPositions {
+  const teams = GROUPS[group]
+  const standings = groupStandings(group, predictions, predScores)
+  const basePts = new Map(standings.map((s) => [s.team, pointsOf(s)]))
+
+  const fixtures = FIXTURES[group].map((f, i) => ({ f, o: decidedOutcome(group, i, predictions, predScores) }))
+  const decided = fixtures.filter((x) => x.o)
+  const remaining = fixtures.filter((x) => !x.o)
+
+  const reachable = new Map<string, Set<number>>()
+  teams.forEach((t) => reachable.set(t, new Set<number>()))
+
+  const setH2H = (h2h: Map<string, number>, home: string, away: string, o: SimOutcome) => {
+    h2h.set(home + '|' + away, o === 'H' ? 3 : o === 'D' ? 1 : 0)
+    h2h.set(away + '|' + home, o === 'A' ? 3 : o === 'D' ? 1 : 0)
+  }
+
+  const total = 3 ** remaining.length
+  for (let mask = 0; mask < total; mask++) {
+    const pts = new Map(basePts)
+    const h2h = new Map<string, number>()
+    for (const { f, o } of decided) {
+      setH2H(h2h, f.home, f.away, o === 'home' ? 'H' : o === 'away' ? 'A' : 'D')
+    }
+    let mm = mask
+    for (const { f } of remaining) {
+      const o = (['H', 'D', 'A'] as SimOutcome[])[mm % 3]
+      mm = (mm / 3) | 0
+      setH2H(h2h, f.home, f.away, o)
+      if (o === 'H') pts.set(f.home, (pts.get(f.home) ?? 0) + 3)
+      else if (o === 'A') pts.set(f.away, (pts.get(f.away) ?? 0) + 3)
+      else {
+        pts.set(f.home, (pts.get(f.home) ?? 0) + 1)
+        pts.set(f.away, (pts.get(f.away) ?? 0) + 1)
+      }
+    }
+    addPositions(teams, pts, h2h, reachable)
+  }
+
+  const order = [...teams].sort((a, b) => (basePts.get(b)! - basePts.get(a)!))
+  const rank = new Map(order.map((t, i) => [t, i]))
+  const candidates = new Map<number, string[]>()
+  for (let p = 1; p <= teams.length; p++) {
+    const list = teams.filter((t) => reachable.get(t)!.has(p))
+    list.sort((a, b) => rank.get(a)! - rank.get(b)!)
+    candidates.set(p, list)
+  }
+  return { candidates }
+}
+
+function addPositions(
+  teams: string[],
+  pts: Map<string, number>,
+  h2h: Map<string, number>,
+  reachable: Map<string, Set<number>>,
+): void {
+  const sorted = [...teams].sort((a, b) => pts.get(b)! - pts.get(a)!)
+  let i = 0
+  let pos = 1
+  while (i < sorted.length) {
+    let j = i
+    while (j < sorted.length && pts.get(sorted[j]) === pts.get(sorted[i])) j++
+    const block = sorted.slice(i, j)
+
+    const sub = new Map<string, number>()
+    for (const x of block) {
+      let s = 0
+      for (const y of block) if (x !== y) s += h2h.get(x + '|' + y) ?? 0
+      sub.set(x, s)
+    }
+    const bs = [...block].sort((a, b) => sub.get(b)! - sub.get(a)!)
+    let k = 0
+    let sp = pos
+    while (k < bs.length) {
+      let l = k
+      while (l < bs.length && sub.get(bs[l]) === sub.get(bs[k])) l++
+      const tie = bs.slice(k, l)
+      for (const t of tie) for (let p = sp; p < sp + tie.length; p++) reachable.get(t)!.add(p)
+      sp += tie.length
+      k = l
+    }
+    pos += block.length
+    i = j
+  }
+}

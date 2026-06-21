@@ -1,0 +1,14 @@
+node_modules
+dist
+*.local
+.DS_Store
+
+# build artifacts
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
+
+# tooling
+.agents/
+skills-lock.json
+.claude/skills/
