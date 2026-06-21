@@ -64,7 +64,8 @@ export function GroupTable({ group, rows, complete, needsScores, decided }: Prop
             const isDecided = decided[i]
             const tentative = isDecided ? '' : 'tentative'
             const gd = gdOf(s)
-            const flag = r.needsScores || r.unresolved
+            // Only flag a tie once the group is finished and an exact score is needed.
+            const flag = complete && r.needsScores
             return (
               <tr key={s.team} className={`${zone} ${tentative}`}>
                 <td>
@@ -78,14 +79,7 @@ export function GroupTable({ group, rows, complete, needsScores, decided }: Prop
                       <span className="lock" title="Position decided">🔒</span>
                     )}
                     {flag && (
-                      <span
-                        className="tie-flag"
-                        title={
-                          r.needsScores
-                            ? 'Level on points — predict exact scores to set goal difference'
-                            : 'Level on points — undecided (fair play / drawing of lots)'
-                        }
-                      >
+                      <span className="tie-flag" title="Level on points — predict exact scores to set goal difference">
                         *
                       </span>
                     )}
