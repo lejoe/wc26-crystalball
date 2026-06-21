@@ -1,5 +1,6 @@
 import * as HoverCard from '@radix-ui/react-hover-card'
-import { abbrOf, flagOf } from '../data/groups'
+import { abbrOf, flagOf, groupOf } from '../data/groups'
+import type { GroupLetter } from '../types'
 import { MATCH_BY_ID } from '../data/bracket'
 import type { MatchView, SlotView } from '../bracketResolve'
 import { useStore } from '../store'
@@ -70,6 +71,17 @@ function Slot({
 
   if (!hasCands) return box
 
+  // Group the candidate teams by their group for a readable popover.
+  const byGroup = new Map<GroupLetter, string[]>()
+  for (const t of view.candidates) {
+    const g = groupOf(t)
+    if (!g) continue
+    const arr = byGroup.get(g)
+    if (arr) arr.push(t)
+    else byGroup.set(g, [t])
+  }
+  const grouped = [...byGroup.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+
   return (
     <HoverCard.Root openDelay={60} closeDelay={150}>
       <HoverCard.Trigger asChild>{box}</HoverCard.Trigger>
@@ -82,9 +94,14 @@ function Slot({
           collisionPadding={8}
         >
           <div className="cand-pop-title">Possible teams</div>
-          {view.candidates.map((t) => (
-            <div className="cand-pop-row" key={t}>
-              <span className="flag">{flagOf(t)}</span> {t}
+          {grouped.map(([g, teams]) => (
+            <div className="cand-pop-group" key={g}>
+              <div className="cand-pop-glabel">Group {g}</div>
+              {teams.map((t) => (
+                <div className="cand-pop-row" key={t}>
+                  <span className="flag">{flagOf(t)}</span> {t}
+                </div>
+              ))}
             </div>
           ))}
         </HoverCard.Content>

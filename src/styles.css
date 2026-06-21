@@ -526,6 +526,17 @@ td.editable.locked { color: var(--text); cursor: default; }
   margin-bottom: 4px;
 }
 .cand-pop-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; padding: 1px 0; }
+.cand-pop-group { margin-top: 6px; }
+.cand-pop-group:first-of-type { margin-top: 0; }
+.cand-pop-glabel {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 2px;
+  margin-bottom: 2px;
+}
 .slot select {
   flex: 1;
   background: var(--panel-2);
