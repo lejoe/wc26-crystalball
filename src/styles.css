@@ -294,6 +294,7 @@ td.editable.locked { color: var(--text); cursor: default; }
 }
 .third-panel { flex: 1 1 480px; max-width: 640px; }
 .third-note { color: var(--muted); font-size: 11px; margin-top: 8px; }
+.cand-sep { color: var(--muted); }
 .provisional { color: var(--muted); }
 .prov-mark {
   color: var(--warn);

@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { GROUP_LETTERS } from './data/groups'
-import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams } from './standings'
+import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions } from './scenarios'
 import { effectiveH2H } from './h2h'
@@ -69,21 +69,38 @@ export function App() {
 
   const thirdRanked = useMemo(() => rankThirdPlace(groups, h2h), [groups, h2h])
 
+  // Teams that could be a group's third-placed team. More than one when the
+  // 2nd/3rd order is a tie whose decider (goal difference) isn't pinned down.
+  const thirdContenders = useMemo(() => {
+    const m = {} as Record<GroupLetter, string[]>
+    for (const g of GROUP_LETTERS) {
+      const ranked = groupRanks[g]
+      const pos3 = ranked.find((r) => r.position === 3)
+      if (!pos3) {
+        m[g] = []
+      } else if (pos3.needsScores || pos3.unresolved) {
+        const p = pointsOf(pos3.standing)
+        m[g] = ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
+      } else {
+        m[g] = [pos3.standing.team]
+      }
+    }
+    return m
+  }, [groupRanks])
+
   const thirdSettled = useMemo(() => {
     const m = {} as Record<GroupLetter, boolean>
     for (const g of GROUP_LETTERS) {
-      if (complete[g]) {
-        m[g] = true
-        continue
-      }
       if (groups[g].every((s) => s.played === 0)) {
         m[g] = false
-        continue
+      } else if (complete[g]) {
+        m[g] = (thirdContenders[g]?.length ?? 0) <= 1
+      } else {
+        m[g] = (possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []).length === 1
       }
-      m[g] = (possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []).length === 1
     }
     return m
-  }, [groups, complete, predictions, predScores])
+  }, [groups, complete, thirdContenders, predictions, predScores])
 
   const bracketViews = useMemo(
     () => resolveBracket(state),
@@ -130,7 +147,7 @@ export function App() {
 
       <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
       <div className="third-section">
-        <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} />
+        <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
         <ThirdPlacePlayoff views={bracketViews} />
       </div>
 
