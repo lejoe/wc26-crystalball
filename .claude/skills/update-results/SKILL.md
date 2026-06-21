@@ -78,6 +78,9 @@ real home score to `hs`, away to `as`.
 - Group stage: replace the two trailing `null`s in the `F(...)` row (or the
   explicit `hs`/`as`) with the real scores.
 - Knockout: add `id: { hs, as }` entries to `BRACKET_RESULTS`.
+- If you wrote at least one result, set `LAST_RESULTS_UPDATE` in
+  `src/data/lastUpdate.ts` to the current UTC time as ISO 8601 (e.g.
+  `2026-06-21T14:27:30Z`). Leave it unchanged on a no-op run.
 
 ### 6. Type-check gate
 - Run `npx tsc --noEmit`.

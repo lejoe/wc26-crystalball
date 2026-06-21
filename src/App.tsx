@@ -5,10 +5,28 @@ import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions } from './scenarios'
 import { effectiveH2H } from './h2h'
 import { useStore } from './store'
+import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket, ThirdPlacePlayoff } from './components/Bracket'
 import type { GroupLetter, TeamStanding } from './types'
+
+const UPDATE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
+  ['year', 31536000], ['month', 2592000], ['week', 604800],
+  ['day', 86400], ['hour', 3600], ['minute', 60], ['second', 1],
+]
+
+/** "2 hours ago", "yesterday", etc. for a past ISO timestamp. */
+function relativeTime(iso: string): string {
+  const diffSec = Math.round((new Date(iso).getTime() - Date.now()) / 1000)
+  const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' })
+  for (const [unit, secs] of UPDATE_UNITS) {
+    if (Math.abs(diffSec) >= secs || unit === 'second') {
+      return rtf.format(Math.round(diffSec / secs), unit)
+    }
+  }
+  return rtf.format(0, 'second')
+}
 
 export function App() {
   const state = useStore()
@@ -115,6 +133,13 @@ export function App() {
           <div className="sub">Pick each match result, then predict the knockout bracket. Everything saves locally.</div>
         </div>
         <div className="header-actions">
+          <time
+            className="last-update"
+            dateTime={LAST_RESULTS_UPDATE}
+            title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
+          >
+            Results updated {relativeTime(LAST_RESULTS_UPDATE)}
+          </time>
           <button
             className="btn btn-danger"
             onClick={() => {
