@@ -11,4 +11,3 @@ vite.config.d.ts
 # tooling
 .agents/
 skills-lock.json
-.claude/skills/
