@@ -11,6 +11,16 @@ Explain each group in plain language, so the reader instantly knows, per team:
 
 The standings table stays the detailed source of truth. This feature explains what the standings *mean*.
 
+## Implementation status (not yet built)
+
+The plain-language analysis feature below is **not implemented**. What already exists and can be reused:
+
+- **Reachable-position engine**: `possibleGroupPositions` in [src/scenarios.ts](src/scenarios.ts) enumerates remaining W/D/L outcomes and returns the positions each team can still reach, tiebreaking by **points + head-to-head only** (goal difference left ambiguous) — exactly this spec's Certainty Basis. Run it in real-results-only mode by passing empty predictions.
+- **Tiebreaker cascade**: points → H2H → GD → goals, in [src/standings.ts](src/standings.ts).
+- **Precursor UI**: the group table already marks each position 🔒 *decided* (clinched on points + H2H) vs dashed *tentative* — a binary version of Through / In the balance.
+
+Still to build: the three-way Through / In the balance / **Out** (elimination) classification, the per-team W/D/L breakdown, the cross-group 3rd-place lean, and all AI prose / block composition.
+
 ## Data Basis
 
 - Runs on **real results only**, read from `FIXTURES` ([src/data/fixtures.ts](src/data/fixtures.ts)). It does **not** use the user's predictions.
@@ -85,7 +95,7 @@ When showing Win / Draw / Lose for the selected team:
 
 ### Dedicated engine
 
-This feature has its **own dedicated engine**, separate from the prediction-oriented functions in [src/standings.ts](src/standings.ts) / [src/scenarios.ts](src/scenarios.ts). It may mirror their proven logic (the tiebreaker cascade: points → H2H pts/gd/gf → overall GD → GF; and the remaining-outcome enumeration) but is not coupled to the prediction state.
+The reachable-outcome and tiebreaker logic this needs **already exists** in [src/scenarios.ts](src/scenarios.ts) (`possibleGroupPositions`) and [src/standings.ts](src/standings.ts), and runs in real-results-only mode when called with empty predictions. Reuse it rather than rebuilding; this feature only adds the classification/prose layer on top and stays decoupled from the user's prediction state.
 
 Engine responsibilities:
 
@@ -164,5 +174,5 @@ A readable assistant, not a stats panel. The standings table remains the detaile
 
 ## Notes / Follow-ups
 
-- The top-level **SPEC.md is stale** relative to the code (it describes manual standings entry; the real app is fixtures + outcome-based predictions). Worth reconciling separately — not part of this feature.
+- The top-level **SPEC.md has been reconciled** with the code (fixtures + outcome-based predictions).
 - The AI's 3rd-place lean leans more on historical sense early in the window, when few other groups have completed two rounds, and sharpens as the cross-group 3rd-place table fills in.
