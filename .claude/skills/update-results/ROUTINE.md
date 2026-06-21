@@ -16,8 +16,8 @@ Nothing lands on `main` unattended.
 > 1. In a clean checkout, `git checkout main && git pull`. Create a branch
 >    `results/YYYY-MM-DD` using today's date (UTC).
 > 2. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
->    `src/data/bracketResults.ts` for played-but-unscored matches dated
->    yesterday-or-earlier, fetches real scores from trustworthy current (2026)
+>    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier
+>    that are confirmed final, fetches real scores from trustworthy current (2026)
 >    sources, writes them (group rows by date+teams; knockout by matchId with
 >    slot a/b orientation, asserting feeding groups are really complete), fuzzy-
 >    flags any drifted team names, gates on `npx tsc --noEmit`, and emits a summary.
