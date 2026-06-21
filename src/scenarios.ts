@@ -71,12 +71,19 @@ export function possibleGroupPositions(
   return { candidates }
 }
 
-function addPositions(
+/**
+ * The 1-based position range each team occupies in a single fully-decided
+ * scenario, tiebreaking by points then head-to-head points only. Teams that a
+ * lower tiebreaker (goal difference) would separate keep a shared range, so the
+ * result reflects exactly what points + H2H can certify.
+ */
+export function scenarioPositions(
   teams: string[],
   pts: Map<string, number>,
   h2h: Map<string, number>,
-  reachable: Map<string, Set<number>>,
-): void {
+): Map<string, Set<number>> {
+  const out = new Map<string, Set<number>>()
+  teams.forEach((t) => out.set(t, new Set<number>()))
   const sorted = [...teams].sort((a, b) => pts.get(b)! - pts.get(a)!)
   let i = 0
   let pos = 1
@@ -98,11 +105,23 @@ function addPositions(
       let l = k
       while (l < bs.length && sub.get(bs[l]) === sub.get(bs[k])) l++
       const tie = bs.slice(k, l)
-      for (const t of tie) for (let p = sp; p < sp + tie.length; p++) reachable.get(t)!.add(p)
+      for (const t of tie) for (let p = sp; p < sp + tie.length; p++) out.get(t)!.add(p)
       sp += tie.length
       k = l
     }
     pos += block.length
     i = j
+  }
+  return out
+}
+
+function addPositions(
+  teams: string[],
+  pts: Map<string, number>,
+  h2h: Map<string, number>,
+  reachable: Map<string, Set<number>>,
+): void {
+  for (const [t, set] of scenarioPositions(teams, pts, h2h)) {
+    for (const p of set) reachable.get(t)!.add(p)
   }
 }

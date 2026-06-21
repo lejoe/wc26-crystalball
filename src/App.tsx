@@ -8,7 +8,10 @@ import { useStore } from './store'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket, ThirdPlacePlayoff } from './components/Bracket'
-import type { GroupLetter, TeamStanding } from './types'
+import analysisFile from './data/groupAnalysis.json'
+import type { GroupAnalysisFile, GroupLetter, TeamStanding } from './types'
+
+const GROUP_ANALYSIS = (analysisFile as unknown as GroupAnalysisFile).groups
 
 export function App() {
   const state = useStore()
@@ -136,6 +139,7 @@ export function App() {
             complete={complete[g]}
             needsScores={needsScores[g]}
             decided={decided[g]}
+            analysis={GROUP_ANALYSIS[g]}
           />
         ))}
       </div>
