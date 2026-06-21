@@ -1,4 +1,4 @@
-import type { GroupLetter, Outcome } from '../types'
+import type { GroupLetter } from '../types'
 
 export type Fixture = {
   date: string // YYYY-MM-DD
@@ -9,12 +9,6 @@ export type Fixture = {
 }
 
 export const resultKey = (group: GroupLetter, index: number) => `${group}:${index}`
-
-/** The outcome implied by a fixture's real score, or undefined if unplayed. */
-export function fixtureOutcome(f: Fixture): Outcome | undefined {
-  if (f.hs === null || f.as === null) return undefined
-  return f.hs > f.as ? 'home' : f.hs < f.as ? 'away' : 'draw'
-}
 
 /**
  * All 72 group-stage fixtures with results as of 2026-06-21.

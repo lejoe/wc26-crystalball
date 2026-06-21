@@ -1,8 +1,8 @@
 # FIFA World Cup 2026 — Prediction Tool
 
-Single-page React + TypeScript app for predicting the World Cup 2026. Enter group
-standings for all 12 groups, then predict the full knockout bracket. All state
-persists to `localStorage`.
+A single-page app to track the World Cup 2026 group stage and predict the knockout
+bracket. Past matches use their real results; you predict the rest. Everything
+saves to `localStorage`.
 
 ## Install
 
@@ -18,32 +18,38 @@ npm run build    # type-check + production build to dist/
 npm run preview  # serve the production build
 ```
 
-## Features
+## How it works
 
-- **12 group tables** with inline editing. Enter W / D / L / GF / GA per team;
-  PL, GD, and points auto-compute. Points can be overridden by typing in the Pts cell.
-- **Tiebreaker cascade**: points → H2H points → H2H GD → H2H goals → overall GD →
-  overall goals. Fair-play and FIFA ranking are out of scope; rows that reach them
-  stay flagged with `*`.
-- **Head-to-head resolution**: when teams tie on points, a "Resolve H2H" button
-  opens a modal listing only the relevant matches. Entered results break the tie.
-- **Best third-placed teams** ranked across all groups; top 8 highlighted.
-- **Knockout bracket** with the official FIFA R32 → Final structure hardcoded.
-  1st/2nd slots resolve from group standings (showing candidates while uncertain);
-  third-place slots use a ranked dropdown filtered to the FIFA-allowed groups.
-- **Winner prediction with cascade reset**: click a team to advance them; undoing a
-  pick clears every downstream match that depended on it.
+- **Group stage.** Each group shows a read-only standings table (computed). Open a
+  group's **Matches** panel to set results: played matches are locked to their real
+  score; for upcoming matches you pick the winner (or draw). The standings,
+  tiebreakers, third-place ranking, and bracket update live.
+- **Exact scores.** Only requested when needed — if two teams are level and the
+  order comes down to goal difference, the group is flagged and the relevant
+  matches gain score inputs (⚖ Scores).
+- **Decided vs tentative.** A locked position shows 🔒; a spot still in play shows a
+  dashed badge.
+- **Third place.** The eight best third-placed teams are ranked and auto-assigned to
+  the bracket's FIFA-allowed slots.
+- **Knockout bracket.** A two-sided bracket from the official R32 → Final structure.
+  Click a team to advance it; you can also advance an undecided (`?`) slot as a
+  placeholder. Hover a `?` slot to see the possible teams.
 
-## Data
+## Tech
 
-- Group teams and draw order: `src/data/groups.ts`
-- Bracket structure: `src/data/bracket.ts`
-  (source: 2026 FIFA World Cup knockout stage regulations)
-- Tiebreaker / ranking logic: `src/standings.ts`
-- Bracket resolution + cascade: `src/bracketResolve.ts`
-- State + persistence: `src/store.ts`
+React 18, TypeScript, Vite, Zustand (state + persistence), Radix UI HoverCard.
 
-## Out of scope (v1)
+## Project layout
 
-Match-by-match score entry, live scores, sharing, mobile-optimized layout, and
-fair-play/FIFA-ranking as active tiebreakers.
+```
+src/
+  data/        groups, fixtures (real results), bracket structure
+  standings.ts standings + tiebreakers from results
+  scenarios.ts clinch / reachable-position analysis
+  h2h.ts       head-to-head records
+  bracketResolve.ts  resolves each bracket slot + advancement
+  store.ts     Zustand store (predictions, scores, bracket picks)
+  components/  GroupTable, MatchesPanel, ThirdPlacePanel, Bracket
+```
+
+See [SPEC.md](SPEC.md) for the design principles.

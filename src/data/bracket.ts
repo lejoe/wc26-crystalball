@@ -56,15 +56,3 @@ function third(slot: string, groups: GroupLetter[]) {
 export const MATCH_BY_ID: Record<number, MatchDef> = Object.fromEntries(
   MATCHES.map((m) => [m.id, m]),
 )
-
-/** Display order per round column (keeps R32→R16 pairs vertically adjacent). */
-export const ROUND_COLUMNS: { round: string; label: string; ids: number[] }[] = [
-  { round: 'R32', label: 'Round of 32', ids: [74, 77, 73, 75, 76, 78, 79, 80, 83, 84, 81, 82, 86, 88, 85, 87] },
-  { round: 'R16', label: 'Round of 16', ids: [89, 90, 91, 92, 93, 94, 95, 96] },
-  { round: 'QF', label: 'Quarter-finals', ids: [97, 99, 98, 100] },
-  { round: 'SF', label: 'Semi-finals', ids: [101, 102] },
-  { round: 'F', label: 'Final', ids: [104] },
-]
-
-/** The eight third-place R32 slot ids, in match order. */
-export const THIRD_SLOTS: string[] = ['T74', 'T77', 'T79', 'T80', 'T81', 'T82', 'T85', 'T87']
