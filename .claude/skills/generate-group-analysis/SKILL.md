@@ -18,9 +18,9 @@ when its fingerprint changed.
 
 ## Steps
 
-1. **Get the facts.** Run the deterministic engine:
+1. **Get the facts.** Run the deterministic engine (`--silent` keeps npm's banner out of the JSON):
    ```
-   npm run analysis:facts > /tmp/analysis-facts.json
+   npm run --silent analysis:facts > /tmp/analysis-facts.json
    ```
    Output: `{ groups: GroupFacts[], thirdPlaceTable: ThirdPlaceFacts[] }`. Read the whole file —
    all ready groups plus the cross-group third-place table are the AI input.
