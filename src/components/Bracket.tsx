@@ -2,6 +2,7 @@ import * as HoverCard from '@radix-ui/react-hover-card'
 import { abbrOf, flagOf, groupOf } from '../data/groups'
 import type { GroupLetter } from '../types'
 import { MATCH_BY_ID } from '../data/bracket'
+import { BRACKET_RESULTS } from '../data/bracketResults'
 import type { MatchView, SlotView } from '../bracketResolve'
 import { useStore } from '../store'
 import type { Side } from '../types'
@@ -46,12 +47,16 @@ function Slot({
   const isWinner = matchView.winnerSide === side
   const isEliminated = matchView.winnerSide != null && !isWinner
   const hasCands = !view.team && view.candidates.length > 0
+  const locked = matchId in BRACKET_RESULTS // real result decided this match
 
   const box = (
     <div
-      className={`slot clickable ${isWinner ? 'winner' : ''} ${isEliminated ? 'eliminated' : ''}`}
-      onClick={() => setWinner(matchId, isWinner ? null : side)}
-      title={isWinner ? 'Advancing — click to undo' : 'Click to advance'}
+      className={`slot ${locked ? '' : 'clickable'} ${isWinner ? 'winner' : ''} ${isEliminated ? 'eliminated' : ''}`}
+      onClick={() => {
+        if (locked) return
+        setWinner(matchId, isWinner ? null : side)
+      }}
+      title={locked ? 'Decided by result' : isWinner ? 'Advancing — click to undo' : 'Click to advance'}
     >
       {view.team ? (
         <>

@@ -1,4 +1,5 @@
 import { MATCHES } from './data/bracket'
+import { BRACKET_RESULTS } from './data/bracketResults'
 import { GROUP_LETTERS } from './data/groups'
 import {
   rankGroup,
@@ -141,8 +142,14 @@ function thirdSlot(
 }
 
 /**
- * Resolve every match: who fills each slot, and the validated winner.
- * Winners that no longer match a current participant are dropped (cascade reset).
+ * Resolve every match: who fills each slot, and the advancing side.
+ *
+ * Picks are path-based: stored by side ('a'/'b'), never by team. A pick rides
+ * along when the slot's team changes and is never validated or cleared against
+ * the current participants. When a real result exists in `BRACKET_RESULTS`, it
+ * supersedes the stored pick for that match — both for the rendered winner and
+ * for downstream slot filling — mirroring the group-stage real-over-prediction
+ * priority. The pick stays stored, just unused for that match.
  */
 export function resolveBracket(state: AppState): Record<number, MatchView> {
   const { predictions, predScores } = state
@@ -201,7 +208,10 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
     const a = slotView(def.a)
     const b = slotView(def.b)
     const stored = state.bracketPredictions[def.id]
-    const winnerSide: Side | null = stored === 'a' || stored === 'b' ? stored : null
+    const pick: Side | null = stored === 'a' || stored === 'b' ? stored : null
+    const real = BRACKET_RESULTS[def.id]
+    const realSide: Side | null = real ? (real.hs > real.as ? 'a' : 'b') : null
+    const winnerSide = realSide ?? pick
     views[def.id] = { def, a, b, winnerSide }
   }
 

@@ -63,7 +63,8 @@ button {
   letter-spacing: -0.01em;
 }
 .app-header .sub { color: var(--muted); font-size: 13px; }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 12px; align-items: center; }
+.last-update { color: var(--muted); font-size: 13px; cursor: help; white-space: nowrap; }
 
 .btn {
   background: var(--panel-2);
