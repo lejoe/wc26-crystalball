@@ -16,10 +16,17 @@ Nothing lands on `main` unattended.
 > repository. Each morning, bring the real match results current and open a pull
 > request for human review. Steps:
 >
-> 1. In the dedicated clone at `~/clones/wc26-routine`, run
->    `git checkout main && git pull --ff-only`. Create a fresh branch
->    `results/YYYY-MM-DD-HHMMSS` (today's date + current time, UTC) so repeated
->    runs on the same day never collide.
+> **Run every shell command as its own step — never chain with `&&`, `;`, or
+> `cd … &&`.** Compound commands can only be approved "once" and re-prompt every
+> run; single commands can be saved as "always allow." The task's working folder
+> is the dedicated clone `~/clones/wc26-routine`, so commands run there directly —
+> do not `cd`.
+>
+> 1. Update and branch, each command on its own:
+>    - `git checkout main`
+>    - `git pull --ff-only`
+>    - `git checkout -b results/YYYY-MM-DD-HHMMSS` (today's date + current time,
+>      UTC) so repeated same-day runs never collide.
 > 2. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
 >    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier,
 >    reads scores from the ESPN scoreboard API (`site.api.espn.com`, Wikipedia
@@ -28,14 +35,17 @@ Nothing lands on `main` unattended.
 >    asserting feeding groups are really complete), fuzzy-flags any drifted team
 >    names, gates on `npx tsc --noEmit`, and emits a summary.
 > 3. If the skill reports nothing to update, or tsc fails: do **not** open a PR.
->    Notify with the reason (nothing to update / type error + details), delete the
->    throwaway branch, and stop.
-> 4. Otherwise commit the edits, push the branch, and run `gh pr create` with:
->    - title `Results update YYYY-MM-DD`
->    - body: the run summary, then a **Fuzzy matches — confirm before merge**
->      section listing every `fetched → canonical` mapping, then the diff overview.
-> 5. Notify with the PR link and the summary. Then `git checkout main` so the
->    working copy is left on a clean `main`, never on the results branch.
+>    Run `git checkout main`, then `git branch -D <branch>` to drop the throwaway
+>    branch (each its own command). Notify the reason and stop.
+> 4. Otherwise, each command on its own:
+>    - `git add -A`
+>    - `git commit -m "Results update YYYY-MM-DD HH:MM"`
+>    - `git push -u origin results/YYYY-MM-DD-HHMMSS`
+>    - `gh pr create` with title `Results update YYYY-MM-DD HH:MM` and body: the
+>      run summary, then a **Fuzzy matches — confirm before merge** section listing
+>      every `fetched → canonical` mapping, then the diff overview.
+> 5. Notify with the PR link and the summary. Then run `git checkout main` so the
+>    clone is left on a clean `main`, never on the results branch.
 >
 > Never merge to `main`. Never clear or migrate browser predictions. Never change
 > bracket pick semantics or grade a prediction. The human reviews, confirms any
@@ -44,8 +54,16 @@ Nothing lands on `main` unattended.
 ## Creating the schedule
 
 Create a **local scheduled task** (the `scheduled-tasks` tool / `/schedule`) with
-cron `15 7 * * *` and the prompt above, pointed at the dedicated clone
-`~/clones/wc26-routine`. It runs in this app under your local `gh` auth, so it
-only fires while the app is open (otherwise on next launch). Each run uses a
-unique `results/YYYY-MM-DD-HHMMSS` branch and opens its own PR, so same-day
-re-runs never collide. Verify `gh` has push rights to `origin`.
+cron `15 7 * * *` and the prompt above. In the task's **Edit** form set the
+**working folder** to the dedicated clone `~/clones/wc26-routine`. It runs in this
+app under your local `gh` auth, so it only fires while the app is open (otherwise
+on next launch). Each run uses a unique `results/YYYY-MM-DD-HHMMSS` branch and
+opens its own PR, so same-day re-runs never collide.
+
+**Pre-authorize once (no settings files):** click **Run now**, then select
+**"always allow"** on each permission prompt. Because every command is a single,
+un-chained statement, each can be saved this way; the approvals are stored on the
+task (review/revoke from its detail page) and future runs are prompt-free. Per the
+[docs](https://code.claude.com/docs/en/desktop-scheduled-tasks#permissions-for-scheduled-tasks),
+compound `&&` commands can only be allowed once — which is why the steps above are
+kept one command each. Verify `gh` has push rights to `origin`.
