@@ -75,7 +75,7 @@ export const FIXTURES: Record<GroupLetter, Fixture[]> = {
   G: [
     F('2026-06-15', 'Belgium', 'Egypt', 1, 1),
     F('2026-06-15', 'Iran', 'New Zealand', 2, 2),
-    F('2026-06-21', 'Belgium', 'Iran'),
+    F('2026-06-21', 'Belgium', 'Iran', 0, 0),
     F('2026-06-21', 'New Zealand', 'Egypt'),
     F('2026-06-26', 'Egypt', 'Iran'),
     F('2026-06-26', 'New Zealand', 'Belgium'),
@@ -83,7 +83,7 @@ export const FIXTURES: Record<GroupLetter, Fixture[]> = {
   H: [
     F('2026-06-15', 'Spain', 'Cabo Verde', 0, 0),
     F('2026-06-15', 'Saudi Arabia', 'Uruguay', 1, 1),
-    F('2026-06-21', 'Spain', 'Saudi Arabia'),
+    F('2026-06-21', 'Spain', 'Saudi Arabia', 4, 0),
     F('2026-06-21', 'Uruguay', 'Cabo Verde'),
     F('2026-06-26', 'Cabo Verde', 'Saudi Arabia'),
     F('2026-06-26', 'Uruguay', 'Spain'),
