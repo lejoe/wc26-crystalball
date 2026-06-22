@@ -6,46 +6,49 @@ Nothing lands on `main` unattended.
 - **Schedule:** `15 7 * * *` in local time (Europe/Zurich) = 07:15 local, ≈05:15 UTC.
 - **Repo:** `lejoe/wc26-crystalball` (remote `origin`). Needs `gh` authenticated
   with `repo` scope and push rights in whatever environment runs the routine.
-- **Working dir:** a **dedicated clone** at `~/clones/wc26-routine`, kept separate
-  from your primary checkout so a 07:15 run never disturbs work in progress. If it
-  is missing, `git clone` `origin` there first.
+- **Working dir:** the task's working folder is your **primary checkout**. Each
+  run does its work in a **throwaway git worktree** the routine creates in a temp
+  path and **removes at the end** — so your working tree is never touched and
+  nothing persists. No separate clone.
 
 ## Routine prompt (self-contained)
 
 > You maintain the FIFA World Cup 2026 prediction app in the `lejoe/wc26-crystalball`
 > repository. Each morning, bring the real match results current and open a pull
-> request for human review. Steps:
+> request for human review. Work in a throwaway git worktree and remove it when
+> done. Never merge to `main`.
 >
 > **Run every shell command as its own step — never chain with `&&`, `;`, or
 > `cd … &&`.** Compound commands can only be approved "once" and re-prompt every
-> run; single commands can be saved as "always allow." The task's working folder
-> is the dedicated clone `~/clones/wc26-routine`, so commands run there directly —
-> do not `cd`.
+> run; single commands can be saved as "always allow." Let `WT` be
+> `/tmp/wc26-routine-YYYYMMDD-HHMMSS` and `BR` be `results/YYYY-MM-DD-HHMMSS`
+> (today's UTC date + time, so same-day runs never collide).
 >
-> 1. Update and branch, each command on its own:
->    - `git checkout main`
->    - `git pull --ff-only`
->    - `git checkout -b results/YYYY-MM-DD-HHMMSS` (today's date + current time,
->      UTC) so repeated same-day runs never collide.
-> 2. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
+> 1. `git fetch origin`
+> 2. `git worktree add WT -b BR origin/main` — a fresh worktree on a new branch off
+>    the latest `origin/main` (a worktree can't check out `main`; this avoids it).
+> 3. `cd WT` (the worktree starts without `node_modules`).
+> 4. `npm ci`
+> 5. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
 >    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier,
 >    reads scores from the ESPN scoreboard API (`site.api.espn.com`, Wikipedia
 >    fallback), writes only matches ESPN marks `status.type.completed === true`
 >    (group rows by date+teams; knockout by matchId with slot a/b orientation,
->    asserting feeding groups are really complete), fuzzy-flags any drifted team
->    names, gates on `npx tsc --noEmit`, and emits a summary.
-> 3. If the skill reports nothing to update, or tsc fails: do **not** open a PR.
->    Run `git checkout main`, then `git branch -D <branch>` to drop the throwaway
->    branch (each its own command). Notify the reason and stop.
-> 4. Otherwise, each command on its own:
+>    asserting feeding groups are really complete), fuzzy-flags drifted team names,
+>    gates on `npx tsc --noEmit`, and emits a summary.
+> 6. If the skill reports nothing to update, or tsc fails: do **not** open a PR.
+>    Run `cd -` (back to the primary repo), then `git worktree remove --force WT`,
+>    then `git branch -D BR` (each its own command). Notify the reason and stop.
+> 7. Otherwise, each command on its own:
 >    - `git add -A`
 >    - `git commit -m "Results update YYYY-MM-DD HH:MM"`
->    - `git push -u origin results/YYYY-MM-DD-HHMMSS`
+>    - `git push -u origin BR`
 >    - `gh pr create` with title `Results update YYYY-MM-DD HH:MM` and body: the
 >      run summary, then a **Fuzzy matches — confirm before merge** section listing
 >      every `fetched → canonical` mapping, then the diff overview.
-> 5. Notify with the PR link and the summary. Then run `git checkout main` so the
->    clone is left on a clean `main`, never on the results branch.
+> 8. Tear down (each its own command): `cd -` (back to the primary repo),
+>    `git worktree remove --force WT`, `git branch -D BR` (the branch lives on
+>    `origin` via the PR). Notify with the PR link and the summary.
 >
 > Never merge to `main`. Never clear or migrate browser predictions. Never change
 > bracket pick semantics or grade a prediction. The human reviews, confirms any
@@ -55,10 +58,12 @@ Nothing lands on `main` unattended.
 
 Create a **local scheduled task** (the `scheduled-tasks` tool / `/schedule`) with
 cron `15 7 * * *` and the prompt above. In the task's **Edit** form set the
-**working folder** to the dedicated clone `~/clones/wc26-routine`. It runs in this
-app under your local `gh` auth, so it only fires while the app is open (otherwise
-on next launch). Each run uses a unique `results/YYYY-MM-DD-HHMMSS` branch and
-opens its own PR, so same-day re-runs never collide.
+**working folder** to your **primary checkout** and leave the worktree toggle
+**off** (the routine manages its own throwaway worktree so it can guarantee
+teardown — the native toggle runs *inside* a worktree, which can't remove itself).
+It runs in this app under your local `gh` auth, so it only fires while the app is
+open (otherwise on next launch). Each run uses a unique `BR` branch and a unique
+`WT` worktree, so same-day re-runs never collide.
 
 **Pre-authorize once (no settings files):** click **Run now**, then select
 **"always allow"** on each permission prompt. Because every command is a single,
