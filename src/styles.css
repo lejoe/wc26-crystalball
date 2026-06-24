@@ -508,7 +508,7 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   .bcol > .col-label .lbl-short { display: inline; }
 }
 @container bracket (max-width: 760px) {
-  .bracket2 .slot { font-size: 11px; padding: 5px 6px; }
+  .bracket2 .slot { font-size: 11px; padding: 5px 6px; min-height: 29.5px; }
   .bracket2 { --cw: 10px; }
 }
 /* Mobile: stack the two halves (and the Final) vertically. */
@@ -627,6 +627,9 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   padding: 11px 9px;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
+  /* Lock every slot to the flagged-entry height so cards don't jump as picks
+     fill empty slots. Matches a flag row at this size. */
+  min-height: 41.5px;
 }
 .slot:last-child { border-bottom: none; }
 .slot.clickable { cursor: pointer; }
