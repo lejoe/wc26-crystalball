@@ -508,8 +508,7 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   .bcol > .col-label .lbl-short { display: inline; }
 }
 @container bracket (max-width: 760px) {
-  .bracket2 .slot { font-size: 11px; padding: 5px 6px; }
-  .bracket2 .match-id { font-size: 8px; }
+  .bracket2 .slot { font-size: 11px; padding: 5px 6px; min-height: 29.5px; }
   .bracket2 { --cw: 10px; }
 }
 /* Mobile: stack the two halves (and the Final) vertically. */
@@ -578,7 +577,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .half-right .slot { flex-direction: row-reverse; }
 .half-right .slot-team { text-align: right; }
 .half-right .slot-unknown { flex-direction: row-reverse; }
-.half-right .match-id { text-align: right; }
 
 /* Centre Final column. */
 .bcol-center { position: relative; }
@@ -621,7 +619,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   border-radius: 8px;
 }
 .match .slot:last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
-.match .match-id { font-size: 9px; color: var(--muted); padding: 2px 8px 0; }
 .slot {
   position: relative;
   display: flex;
@@ -630,6 +627,9 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   padding: 11px 9px;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
+  /* Lock every slot to the flagged-entry height so cards don't jump as picks
+     fill empty slots. Matches a flag row at this size. */
+  min-height: 41.5px;
 }
 .slot:last-child { border-bottom: none; }
 .slot.clickable { cursor: pointer; }
@@ -780,7 +780,7 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 }
 .h2h-tag.pending { color: var(--muted); border-color: var(--line); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
-.legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 8px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin: 8px auto 0; max-width: 1180px; }
 .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
 .legend .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 

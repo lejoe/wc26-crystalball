@@ -22,7 +22,7 @@ export type SlotView = {
   certain: boolean // true when standings/bracket fully determine it
   confirmed: boolean // true only when real results (not predictions) lock the team
   candidates: string[] // potential teams when not yet known
-  label: string // short source label, e.g. "1st A", "Winner M74", "3rd ABCDF"
+  label: string // short source label, e.g. "1st A", "3rd ABCDF"; empty for match-fed slots
 }
 
 export type MatchView = {
@@ -48,9 +48,8 @@ function slotLabel(src: SlotSource): string {
     case 'third':
       return `3rd ${src.groups.join('/')}`
     case 'winner':
-      return `Winner M${src.match}`
     case 'loser':
-      return `Loser M${src.match}`
+      return ''
   }
 }
 
