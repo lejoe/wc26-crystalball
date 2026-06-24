@@ -58,9 +58,12 @@ function relativeTime(iso: string): string {
 
 export function App() {
   const state = useStore()
-  const resetAll = useStore((s) => s.resetAll)
+  const resetGroups = useStore((s) => s.resetGroups)
+  const resetBracket = useStore((s) => s.resetBracket)
 
   const { predictions, predScores } = state
+  const hasGroupPicks = Object.keys(predictions).length > 0 || Object.keys(predScores).length > 0
+  const hasBracketPicks = Object.keys(state.bracketPredictions).length > 0
 
   // Team picked from the header search — opens its situation-analysis popup.
   const [searchTeam, setSearchTeam] = useState<string | null>(null)
@@ -171,31 +174,25 @@ export function App() {
       <header className="app-header">
         <div className="header-lede">
           <h1>FIFA World Cup 2026 — Crystal Ball</h1>
-          <div className="sub">Set results, explore the scenarios that decide who advances.</div>
+          <div className="sub">See where teams stand, open any team's full situation, and explore the scenarios still in play.</div>
         </div>
         <div className="header-side">
-          <div className="header-actions">
-            <time
-              className="last-update"
-              dateTime={LAST_RESULTS_UPDATE}
-              title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
-            >
-              Results updated {relativeTime(LAST_RESULTS_UPDATE)}
-            </time>
-            <button
-              className="btn btn-danger"
-              onClick={() => {
-                if (confirm('Reset all predictions and results?')) resetAll()
-              }}
-            >
-              Reset all
-            </button>
-          </div>
           <TeamSearch teams={SEARCH_TEAMS} onSelect={setSearchTeam} />
         </div>
       </header>
 
-      <div className="section-title">Group Stage</div>
+      <div className="section-title">
+        <span>Group Stage</span>
+        <button
+          className="reset-link"
+          disabled={!hasGroupPicks}
+          onClick={() => {
+            if (hasGroupPicks && confirm('Reset all group-stage predictions?')) resetGroups()
+          }}
+        >
+          Reset group picks
+        </button>
+      </div>
       <div className="groups-grid">
         {GROUP_LETTERS.map((g) => (
           <GroupTable
@@ -219,13 +216,36 @@ export function App() {
         <span className="chip"><span className="tie-flag">*</span> level — predict exact scores</span>
       </div>
 
-      <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
+      <div className="section-title">
+        <span>Best Third-Placed Teams <span className="section-sub">advisory ranking</span></span>
+      </div>
       <div className="third-section">
         <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
       </div>
 
-      <div className="section-title">Knockout Bracket</div>
+      <div className="section-title">
+        <span>Knockout Bracket</span>
+        <button
+          className="reset-link"
+          disabled={!hasBracketPicks}
+          onClick={() => {
+            if (hasBracketPicks && confirm('Reset all bracket predictions?')) resetBracket()
+          }}
+        >
+          Reset bracket picks
+        </button>
+      </div>
       <Bracket views={bracketViews} />
+
+      <footer className="app-footer">
+        <time
+          className="last-update"
+          dateTime={LAST_RESULTS_UPDATE}
+          title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
+        >
+          Match results updated {relativeTime(LAST_RESULTS_UPDATE)}
+        </time>
+      </footer>
 
       {searchTeam && searchRoot && (
         <AnalysisModal

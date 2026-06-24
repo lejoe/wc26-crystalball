@@ -148,14 +148,46 @@ button {
 .btn-danger:hover { border-color: #e5484d; color: #ff7b7e; }
 
 .section-title {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--muted);
-  margin: 28px 0 12px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 23px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin: 44px 0 18px;
   border-bottom: 1px solid var(--line);
-  padding-bottom: 6px;
+  padding-bottom: 12px;
 }
+.section-title .section-sub {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  letter-spacing: 0;
+}
+.reset-link {
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  background: none;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 5px 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.reset-link:hover:not(:disabled) { border-color: var(--out); color: #ff7b7e; }
+.reset-link:disabled { opacity: 0.4; cursor: default; }
+
+.app-footer {
+  margin: 40px 0 8px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  text-align: center;
+}
+.app-footer .last-update { cursor: help; }
 
 /* ---------- Groups grid ---------- */
 .groups-grid {
