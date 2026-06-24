@@ -252,6 +252,14 @@ table.standings td.qcol { border-bottom: none; }
 .q-out .name { color: var(--muted); }
 .q-out .flag { opacity: 0.55; }
 
+/* Rows with an available situation analysis: hover/focus to highlight, click to open. */
+table.standings tr.row-analyzable { cursor: pointer; }
+table.standings tr.row-analyzable:hover td:not(.qcol),
+table.standings tr.row-analyzable:focus-visible td:not(.qcol) {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+table.standings tr.row-analyzable:focus-visible { outline: none; }
+
 .team-cell { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .team-cell .flag { font-size: 14px; }
 .team-cell .name { overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
@@ -626,39 +634,6 @@ td.editable.locked { color: var(--text); cursor: default; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 8px; }
 .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
 .legend .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
-
-/* ---- Group situation analysis: hover a team name in the standings ---- */
-.an-name {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  background: none;
-  border: none;
-  padding: 0;
-  margin: 0;
-  font: inherit;
-  color: inherit;
-  cursor: pointer;
-  min-width: 0;
-}
-.an-name .name { text-decoration: underline dotted; text-decoration-color: var(--line); text-underline-offset: 3px; }
-.an-name:hover .name, .an-name.open .name { text-decoration-color: var(--accent); color: var(--text); }
-.an-dot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; }
-.an-dot.tone-through { background: var(--advance-bd); }
-.an-dot.tone-in-balance { background: var(--warn); }
-.an-dot.tone-out { background: #b04a4a; }
-
-/* Hover teaser shown before opening the situation-analysis modal. */
-.an-teaser {
-  max-width: 240px;
-  background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 8px 10px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  z-index: 60;
-}
-.an-teaser-hint { margin: 0; font-size: 10px; color: var(--accent); }
 
 .an2-overlay {
   position: fixed;

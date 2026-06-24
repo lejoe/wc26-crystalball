@@ -3,7 +3,6 @@ import { flagOf } from '../data/groups'
 import { gdOf, pointsOf, type RankedRow } from '../standings'
 import { AnalysisModal } from './AnalysisModal'
 import { MatchesPanel } from './MatchesPanel'
-import { TeamAnalysisTrigger } from './TeamAnalysis'
 import type { GroupLetter, StatusTone } from '../types'
 import type { QualStatus } from '../scenarios'
 import type { Node } from '../scenarioTree'
@@ -96,23 +95,33 @@ export function GroupTable({ group, rows, complete, needsScores, predicted, next
             const gd = gdOf(s)
             // Only flag a tie once the group is finished and an exact score is needed.
             const flag = complete && r.needsScores
+            // Rows with a tone + tree open the situation-analysis modal on click.
+            const tone = modalTone(s.team)
+            const open = tone ? () => setModalTeam(s.team) : undefined
             return (
-              <tr key={s.team} className={`q-${status}`}>
+              <tr
+                key={s.team}
+                className={`q-${status}${tone ? ' row-analyzable' : ''}`}
+                role={tone ? 'button' : undefined}
+                tabIndex={tone ? 0 : undefined}
+                aria-label={tone ? `${s.team} — open situation analysis` : undefined}
+                onClick={open}
+                onKeyDown={
+                  open
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          open()
+                        }
+                      }
+                    : undefined
+                }
+              >
                 <td className="qcol" aria-hidden="true"></td>
                 <td className="team-col">
                   <div className="team-cell">
                     <span className="flag">{flagOf(s.team)}</span>
-                    {modalTone(s.team) ? (
-                      <TeamAnalysisTrigger
-                        team={s.team}
-                        tone={modalTone(s.team) as StatusTone}
-                        onOpen={() => setModalTeam(s.team)}
-                      >
-                        <span className="name" title={s.team}>{s.team}</span>
-                      </TeamAnalysisTrigger>
-                    ) : (
-                      <span className="name" title={s.team}>{s.team}</span>
-                    )}
+                    <span className="name" title={s.team}>{s.team}</span>
                     {flag && (
                       <span className="tie-flag" title="Level on points — predict exact scores to set goal difference">
                         *
