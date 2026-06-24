@@ -1,5 +1,5 @@
-import { lazy, Suspense, useMemo } from 'react'
-import { GROUP_LETTERS } from './data/groups'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { GROUPS, GROUP_LETTERS } from './data/groups'
 import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, predictedCount, nextMatchDate } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
@@ -9,6 +9,8 @@ import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket } from './components/Bracket'
+import { AnalysisModal } from './components/AnalysisModal'
+import { TeamSearch, type SearchTeam } from './components/TeamSearch'
 import { analysisReady, groupAnalysisFacts } from './groupAnalysis'
 import { buildGroupScenarios, type Node } from './scenarioTree'
 import type { GroupLetter, StatusTone, TeamStanding } from './types'
@@ -25,6 +27,11 @@ const ANALYSIS = (() => {
   }
   return { tones, scenarios }
 })()
+
+// Every team, flagged with whether it has an open situation to analyse.
+const SEARCH_TEAMS: SearchTeam[] = GROUP_LETTERS.flatMap((g) =>
+  GROUPS[g].map((team) => ({ team, group: g, analyzable: !!ANALYSIS.scenarios[g]?.[team] })),
+)
 
 // Dev-only feedback/annotation widget. Lazy + DEV-gated so it is excluded from
 // the production bundle entirely.
@@ -54,6 +61,12 @@ export function App() {
   const resetAll = useStore((s) => s.resetAll)
 
   const { predictions, predScores } = state
+
+  // Team picked from the header search — opens its situation-analysis popup.
+  const [searchTeam, setSearchTeam] = useState<string | null>(null)
+  const searchGroup = searchTeam ? SEARCH_TEAMS.find((t) => t.team === searchTeam)?.group : undefined
+  const searchRoot = searchTeam && searchGroup ? ANALYSIS.scenarios[searchGroup]?.[searchTeam] : undefined
+  const searchTone = searchTeam && searchGroup ? ANALYSIS.tones[searchGroup]?.get(searchTeam) : undefined
 
   const h2h = useMemo(() => effectiveH2H(predictions, predScores), [predictions, predScores])
 
@@ -156,26 +169,29 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div>
+        <div className="header-lede">
           <h1>FIFA World Cup 2026 — Crystal Ball</h1>
           <div className="sub">Set results, explore the scenarios that decide who advances.</div>
         </div>
-        <div className="header-actions">
-          <time
-            className="last-update"
-            dateTime={LAST_RESULTS_UPDATE}
-            title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
-          >
-            Results updated {relativeTime(LAST_RESULTS_UPDATE)}
-          </time>
-          <button
-            className="btn btn-danger"
-            onClick={() => {
-              if (confirm('Reset all predictions and results?')) resetAll()
-            }}
-          >
-            Reset all
-          </button>
+        <div className="header-side">
+          <div className="header-actions">
+            <time
+              className="last-update"
+              dateTime={LAST_RESULTS_UPDATE}
+              title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
+            >
+              Results updated {relativeTime(LAST_RESULTS_UPDATE)}
+            </time>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                if (confirm('Reset all predictions and results?')) resetAll()
+              }}
+            >
+              Reset all
+            </button>
+          </div>
+          <TeamSearch teams={SEARCH_TEAMS} onSelect={setSearchTeam} />
         </div>
       </header>
 
@@ -210,6 +226,15 @@ export function App() {
 
       <div className="section-title">Knockout Bracket</div>
       <Bracket views={bracketViews} />
+
+      {searchTeam && searchRoot && (
+        <AnalysisModal
+          team={searchTeam}
+          tone={(searchTone ?? 'in-balance') as StatusTone}
+          root={searchRoot}
+          onClose={() => setSearchTeam(null)}
+        />
+      )}
 
       {DevFeedback && (
         <Suspense fallback={null}>
