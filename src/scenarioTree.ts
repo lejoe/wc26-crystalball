@@ -34,8 +34,10 @@ export type Opt = { label: string; place: string; zone: Zone; child: Node }
 export type ChoiceNode = {
   type: 'choice'
   kind: 'own' | 'parallel'
-  match: string
-  vs?: string
+  /** The two sides of the fixture, in home–away order. */
+  home: string
+  away: string
+  /** Parallel matches only: the team whose win is the subject's best outcome. */
   rootFor?: string
   options: Opt[]
 }
@@ -351,7 +353,7 @@ function build(group: GroupLetter): Record<string, Node> {
 
       const union = [...new Set(branches.flatMap((b) => b.set))].sort((a, b) => a - b)
       return {
-        node: { type: 'choice', kind: 'parallel', match: `${parHome} v ${parAway}`, rootFor, options },
+        node: { type: 'choice', kind: 'parallel', home: parHome, away: parAway, rootFor, options },
         set: union,
       }
     }
@@ -393,8 +395,8 @@ function build(group: GroupLetter): Record<string, Node> {
     const root: ChoiceNode = {
       type: 'choice',
       kind: 'own',
-      match: `${ownFx.home} v ${ownFx.away}`,
-      vs: rem.opponent,
+      home: ownFx.home,
+      away: ownFx.away,
       options,
     }
 

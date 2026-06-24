@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { flagOf } from '../data/groups'
 import type { ChoiceNode, EndNode, GdNoteNode, MarginsNode, Node, OpponentList, Zone } from '../scenarioTree'
 
 // ── Interactive "drill-down" scenario for a single team ──────────────────────
@@ -18,6 +19,26 @@ function viabilityOf(points: number, gd?: number) {
 // ── views ────────────────────────────────────────────────────────────────────
 const zoneCls = (z: Zone) => (z === 'good' ? 'good' : z === 'bad' ? 'bad' : 'mid')
 const fmtGD = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
+
+/** A fixture as two flagged sides. `favor` marks the team to root for (parallel matches). */
+function Fixture({ home, away, favor }: { home: string; away: string; favor?: string }) {
+  const Side = ({ team }: { team: string }) => (
+    <span className={`side ${team === favor ? 'fav' : ''}`}>
+      <span className="flag">{flagOf(team)}</span>
+      <span className="tn">{team}</span>
+      {team === favor && (
+        <span className="root-badge" title="Root for them — their win is your best outcome">🤞</span>
+      )}
+    </span>
+  )
+  return (
+    <div className="fixture">
+      <Side team={home} />
+      <span className="dash">—</span>
+      <Side team={away} />
+    </div>
+  )
+}
 
 function Opponents({ list }: { list: OpponentList }) {
   const label = list.kind === 'runnerUp' ? 'R32 opponents · group runner-up' : 'Possible R32 opponents · a best third'
@@ -125,17 +146,12 @@ function Flow({ root }: { root: Node }) {
           return (
             <div className={`step ${colour}`} key={i}>
               <div className="s-head">
-                {it.node.kind === 'own' ? (
-                  <>
-                    <div className="s-eyebrow">Last match</div>
-                    <div className="s-title"><span className="vs">vs</span> {it.node.vs}</div>
-                  </>
-                ) : (
-                  <>
-                    <div className="s-eyebrow">Watch · {it.node.match}</div>
-                    {it.node.rootFor && <div className="s-root"><span className="rk">Root for</span><b>{it.node.rootFor}</b></div>}
-                  </>
-                )}
+                <div className="s-eyebrow">{it.node.kind === 'own' ? 'Last match' : 'Watch'}</div>
+                <Fixture
+                  home={it.node.home}
+                  away={it.node.away}
+                  favor={it.node.kind === 'parallel' ? it.node.rootFor : undefined}
+                />
               </div>
               {!it.single && (
                 <div className="opts">
@@ -223,11 +239,12 @@ const SCENARIO_CSS = `
   .scn .s-eyebrow{font-size:10px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:var(--txt3);}
   .scn .step.blue .s-eyebrow{color:var(--info);}
   .scn .step.amber .s-eyebrow{color:#e8b35e;}
-  .scn .s-title{font-size:14px; font-weight:700; color:var(--txt); margin-top:2px;}
-  .scn .s-title .vs{color:var(--txt2); font-weight:600;}
-  .scn .s-root{font-size:11.5px; color:var(--txt2); margin-top:3px;}
-  .scn .s-root .rk{font-size:9.5px; font-weight:700; letter-spacing:.5px; text-transform:uppercase; color:var(--txt3); margin-right:5px;}
-  .scn .s-root b{color:var(--info); font-weight:700;}
+  .scn .fixture{display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:3px; font-size:14px; font-weight:700; color:var(--txt);}
+  .scn .fixture .side{display:inline-flex; align-items:center; gap:6px;}
+  .scn .fixture .flag{font-size:15px;}
+  .scn .fixture .dash{color:var(--txt3); font-weight:600;}
+  .scn .fixture .side.fav .tn{color:var(--info);}
+  .scn .root-badge{font-size:12.5px; line-height:1; cursor:help;}
   .scn .opts{display:flex; flex-direction:column; gap:6px;}
   .scn .opt{display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:10px 13px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); color:var(--txt); font:inherit; cursor:pointer; transition:background .12s, border-color .12s, opacity .12s;}
   .scn .opt:hover{border-color:rgba(255,255,255,.3); background:#1c232d;}
