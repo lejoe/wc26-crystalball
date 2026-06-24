@@ -157,8 +157,8 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div>
-          <h1>FIFA World Cup 2026 — Prediction Tool</h1>
-          <div className="sub">Pick each match result, then predict the knockout bracket. Everything saves locally.</div>
+          <h1>FIFA World Cup 2026 — Crystal Ball</h1>
+          <div className="sub">Set match results to see where every team stands and explore the scenarios that decide who advances. Everything saves locally.</div>
         </div>
         <div className="header-actions">
           <time
