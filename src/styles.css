@@ -411,10 +411,16 @@ td.editable.locked { color: var(--text); cursor: default; }
   min-width: 14px;
 }
 
-/* Unsettled group: a header line (no bottom border so it joins its candidates)
-   carrying only the floor; "min" sits left of the points so the number aligns
-   under the Pts column. */
-table.standings tr.third-group-head td { border-bottom: none; }
+/* Unsettled group: a header bar (its own background; no bottom border so it
+   joins its candidates) carrying only the floor. The top border breaks the
+   continuous qualification rail so each group reads as a distinct block. "min"
+   sits left of the points so the number aligns under the Pts column. */
+table.standings tr.third-group-head td {
+  border-top: 2px solid var(--line);
+  border-bottom: none;
+}
+table.standings tr.third-group-head td:not(.qcol) { background: var(--panel-2); }
+.third-ghead { font-size: 13px; font-weight: 700; color: var(--text); }
 table.standings td.min-label {
   text-align: right;
   color: var(--muted);
@@ -423,7 +429,11 @@ table.standings td.min-label {
   letter-spacing: 0.03em;
 }
 
-/* Candidate rows nested under an unsettled group: indented, position-prefixed. */
+/* Candidate rows nested under an unsettled group: indented, position-prefixed,
+   and faintly tinted so they read as belonging to the header above. */
+table.standings tr.third-candidate td:not(.qcol) {
+  background: color-mix(in srgb, var(--panel-2) 55%, transparent);
+}
 table.standings tr.third-candidate td.team-col { padding-left: 22px; }
 .cand-pos {
   display: inline-block;

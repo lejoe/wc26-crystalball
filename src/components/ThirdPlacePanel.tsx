@@ -43,9 +43,7 @@ export function ThirdPlacePanel({ rows }: Props) {
                   <tr className="q-balance third-group-head">
                     <td className="qcol" aria-hidden="true"></td>
                     <td className="team-col">
-                      <span className="gc-title">
-                        Group <b>{r.group}</b>
-                      </span>
+                      <span className="third-ghead">{r.group}</span>
                     </td>
                     <td className="derived"></td>
                     <td className="derived"></td>
