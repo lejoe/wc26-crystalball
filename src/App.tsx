@@ -153,10 +153,12 @@ export function App() {
         const standing = ranked.find((r) => r.standing.team === team)!.standing
         rows.push({ group: g, settled: true, rank: 0, sortPts: pointsOf(standing), thirdStanding: standing })
       } else {
-        const candidates = candidateTeams.map((team) => {
-          const rr = ranked.find((r) => r.standing.team === team)!
-          return { standing: rr.standing, position: rr.position }
-        })
+        const candidates = candidateTeams
+          .map((team) => {
+            const rr = ranked.find((r) => r.standing.team === team)!
+            return { standing: rr.standing, position: rr.position }
+          })
+          .sort((a, b) => a.position - b.position)
         const minPoints = minThirdPlacePoints(g)
         rows.push({ group: g, settled: false, rank: 0, sortPts: minPoints, minPoints, candidates })
       }
