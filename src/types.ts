@@ -45,6 +45,9 @@ export type MatchDef = {
   b: SlotSource
 }
 
+/** Advancement bucket for a team, certified by points + head-to-head only. */
+export type StatusTone = 'through' | 'in-balance' | 'out'
+
 export type AppState = {
   /**
    * Predicted outcomes for UPCOMING matches, keyed by `${group}:${fixtureIndex}`.
