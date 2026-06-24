@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { GROUP_LETTERS } from './data/groups'
-import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, predictedCount, nextMatchDate } from './standings'
+import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, thirdPlaceContenders, predictedCount, nextMatchDate } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
@@ -90,23 +90,16 @@ export function App() {
   const thirdRanked = useMemo(() => rankThirdPlace(groups, h2h), [groups, h2h])
 
   // Teams that could be a group's third-placed team. More than one when the
-  // 2nd/3rd order is a tie whose decider (goal difference) isn't pinned down.
+  // 2nd/3rd order is a genuine tie whose decider (goal difference) isn't pinned
+  // down — teams locked above third by head-to-head or goal difference are
+  // excluded so they don't show up in the advisory ranking.
   const thirdContenders = useMemo(() => {
     const m = {} as Record<GroupLetter, string[]>
     for (const g of GROUP_LETTERS) {
-      const ranked = groupRanks[g]
-      const pos3 = ranked.find((r) => r.position === 3)
-      if (!pos3) {
-        m[g] = []
-      } else if (pos3.needsScores || pos3.unresolved) {
-        const p = pointsOf(pos3.standing)
-        m[g] = ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
-      } else {
-        m[g] = [pos3.standing.team]
-      }
+      m[g] = thirdPlaceContenders(groups[g], h2h, incompleteGoalsTeams(g, predictions, predScores))
     }
     return m
-  }, [groupRanks])
+  }, [groups, h2h, predictions, predScores])
 
   const thirdSettled = useMemo(() => {
     const m = {} as Record<GroupLetter, boolean>
