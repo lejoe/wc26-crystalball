@@ -1,14 +1,14 @@
 import { useMemo } from 'react'
 import { GROUP_LETTERS } from './data/groups'
-import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf } from './standings'
+import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, predictedCount, nextMatchDate } from './standings'
 import { resolveBracket } from './bracketResolve'
-import { possibleGroupPositions } from './scenarios'
+import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
 import { useStore } from './store'
 import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
-import { Bracket, ThirdPlacePlayoff } from './components/Bracket'
+import { Bracket } from './components/Bracket'
 import type { GroupLetter, TeamStanding } from './types'
 
 const UPDATE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -64,26 +64,28 @@ export function App() {
     return out
   }, [groupRanks, complete])
 
-  // Per group, per ranked row: is that team's final position locked in?
-  const decided = useMemo(() => {
-    const out = {} as Record<GroupLetter, boolean[]>
+  // Per group: how many matches the user has predicted, and the next match date.
+  const predicted = useMemo(() => {
+    const out = {} as Record<GroupLetter, number>
+    for (const g of GROUP_LETTERS) out[g] = predictedCount(g, predictions, predScores)
+    return out
+  }, [predictions, predScores])
+
+  const nextDates = useMemo(() => {
+    const out = {} as Record<GroupLetter, string | null>
+    for (const g of GROUP_LETTERS) out[g] = nextMatchDate(g)
+    return out
+  }, [])
+
+  // Per group, per ranked row: Through / In the balance / Out outlook.
+  const qualStatus = useMemo(() => {
+    const out = {} as Record<GroupLetter, QualStatus[]>
     for (const g of GROUP_LETTERS) {
-      const ranked = groupRanks[g]
-      if (groups[g].every((s) => s.played === 0)) {
-        out[g] = ranked.map(() => false)
-      } else if (complete[g]) {
-        // Complete group: every position is set unless it's an unbroken tie.
-        out[g] = ranked.map((r) => !r.unresolved && !r.needsScores)
-      } else {
-        // In progress: a team is locked only if it can reach a single position.
-        const cand = possibleGroupPositions(g, predictions, predScores).candidates
-        const reach = new Map<string, number>()
-        for (const teams of cand.values()) for (const t of teams) reach.set(t, (reach.get(t) ?? 0) + 1)
-        out[g] = ranked.map((r) => (reach.get(r.standing.team) ?? 9) === 1)
-      }
+      const status = qualificationStatus(g, predictions, predScores)
+      out[g] = groupRanks[g].map((r) => status.get(r.standing.team) ?? 'open')
     }
     return out
-  }, [groupRanks, groups, complete, predictions, predScores])
+  }, [groupRanks, predictions, predScores])
 
   const thirdRanked = useMemo(() => rankThirdPlace(groups, h2h), [groups, h2h])
 
@@ -160,20 +162,22 @@ export function App() {
             rows={groupRanks[g]}
             complete={complete[g]}
             needsScores={needsScores[g]}
-            decided={decided[g]}
+            predicted={predicted[g]}
+            nextDate={nextDates[g]}
+            qual={qualStatus[g]}
           />
         ))}
       </div>
       <div className="legend">
-        <span className="chip"><span className="swatch" style={{ background: 'var(--advance-bd)' }} /> Top 2 advance</span>
-        <span className="chip"><span className="swatch" style={{ background: 'var(--third-bd)' }} /> 3rd (8 best advance)</span>
+        <span className="chip"><span className="swatch" style={{ background: 'var(--advance-bd)' }} /> Through</span>
+        <span className="chip"><span className="swatch" style={{ background: 'var(--third-bd)' }} /> In the balance</span>
+        <span className="chip"><span className="swatch" style={{ background: 'var(--out)' }} /> Out</span>
         <span className="chip"><span className="tie-flag">*</span> level — predict exact scores</span>
       </div>
 
       <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
       <div className="third-section">
         <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
-        <ThirdPlacePlayoff views={bracketViews} />
       </div>
 
       <div className="section-title">Knockout Bracket</div>

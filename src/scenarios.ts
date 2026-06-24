@@ -71,6 +71,50 @@ export function possibleGroupPositions(
   return { candidates }
 }
 
+/** A team's qualification outlook within its group. */
+export type QualStatus = 'through' | 'balance' | 'out' | 'open'
+
+/**
+ * Classify each team's qualification outlook from the positions it can still
+ * reach: guaranteed top 2 → through, can't reach top 3 → out, anything that
+ * still straddles the line → in the balance. Before a group has any results
+ * every team is "open".
+ */
+export function qualificationStatus(
+  group: GroupLetter,
+  predictions: Record<string, Outcome>,
+  predScores: Record<string, PredScore> = {},
+): Map<string, QualStatus> {
+  const teams = GROUPS[group]
+  const standings = groupStandings(group, predictions, predScores)
+  if (standings.every((s) => s.played === 0)) {
+    return new Map(teams.map((t) => [t, 'open']))
+  }
+
+  const { candidates } = possibleGroupPositions(group, predictions, predScores)
+  const reach = new Map<string, number[]>()
+  for (const [pos, list] of candidates) {
+    for (const t of list) {
+      const arr = reach.get(t)
+      if (arr) arr.push(pos)
+      else reach.set(t, [pos])
+    }
+  }
+
+  const out = new Map<string, QualStatus>()
+  for (const t of teams) {
+    const ps = reach.get(t)
+    if (!ps || ps.length === 0) {
+      out.set(t, 'open')
+      continue
+    }
+    const max = Math.max(...ps)
+    const min = Math.min(...ps)
+    out.set(t, max <= 2 ? 'through' : min >= 4 ? 'out' : 'balance')
+  }
+  return out
+}
+
 function addPositions(
   teams: string[],
   pts: Map<string, number>,

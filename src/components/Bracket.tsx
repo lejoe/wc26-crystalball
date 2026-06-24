@@ -49,9 +49,13 @@ function Slot({
   const hasCands = !view.team && view.candidates.length > 0
   const locked = matchId in BRACKET_RESULTS // real result decided this match
 
+  const winnerCls = isWinner ? 'winner' : ''
+  // Mark a filled entry: green when real results lock the team, orange when it's prediction-based.
+  const entryCls = view.team ? (view.confirmed ? 'entry-real' : 'entry-pred') : ''
+
   const box = (
     <div
-      className={`slot ${locked ? '' : 'clickable'} ${isWinner ? 'winner' : ''} ${isEliminated ? 'eliminated' : ''}`}
+      className={`slot ${locked ? '' : 'clickable'} ${winnerCls} ${entryCls} ${isEliminated ? 'eliminated' : ''}`}
       onClick={() => {
         if (locked) return
         setWinner(matchId, isWinner ? null : side)
@@ -177,7 +181,10 @@ export function Bracket({ views }: Props) {
             <div className="champion-box">
               <div className="champion-label">Champion</div>
               <div className="match match-final">
-                <div className="slot winner" style={{ justifyContent: 'center' }}>
+                <div
+                  className={`slot winner ${champion ? (champSlot?.confirmed ? 'entry-real' : 'entry-pred') : ''}`}
+                  style={{ justifyContent: 'center' }}
+                >
                   {champion ? (
                     <>
                       <span className="flag">{flagOf(champion)}</span>
@@ -193,6 +200,7 @@ export function Bracket({ views }: Props) {
               </div>
             </div>
           </div>
+          <ThirdPlacePlayoff views={views} />
         </div>
 
         <div className="bhalf bhalf-right">
