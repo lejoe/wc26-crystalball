@@ -164,13 +164,12 @@ export function Bracket({ views }: Props) {
         </div>
 
         <div className="bcol bcol-center">
-          <div className="col-label final-label">Final</div>
-          <div className="bcol-matches">
-            <div className="bcell">
-              <div className="final-block">
-                <div className="col-label final-match-label">Final</div>
-                <MatchCard matchView={views[104]} final popSide="right" />
-              </div>
+          <div className="col-label final-label" aria-hidden="true">{' '}</div>
+          <div className="final-stack">
+            <ThirdPlacePlayoff views={views} />
+            <div className="final-block">
+              <div className="col-label final-match-label">Final</div>
+              <MatchCard matchView={views[104]} final popSide="right" />
             </div>
             <div className="champion-box">
               <div className="champion-label">Champion</div>
@@ -194,7 +193,6 @@ export function Bracket({ views }: Props) {
               </div>
             </div>
           </div>
-          <ThirdPlacePlayoff views={views} />
         </div>
 
         <div className="bhalf bhalf-right">

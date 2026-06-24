@@ -443,9 +443,17 @@ td.editable.locked { color: var(--text); cursor: default; }
 
 /* Centre Final column. */
 .bcol-center { position: relative; }
-.bcol-center .bcol-matches { flex: 1 1 auto; }
-.bcol-center .bcell { flex: 1 1 0; width: 100%; }
 .final-label { color: var(--accent); font-weight: 700; }
+/* Centre column blocks (third-place, final, champion) stacked with even spacing. */
+.final-stack {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+}
 .final-block { width: 100%; }
 .final-block > .match { width: 100%; }
 .final-match-label {
@@ -457,11 +465,7 @@ td.editable.locked { color: var(--text); cursor: default; }
   text-align: center;
 }
 .champion-box {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  margin-top: 64px;
+  width: 100%;
   text-align: center;
 }
 .champion-label {
@@ -565,11 +569,7 @@ td.editable.locked { color: var(--text); cursor: default; }
 .match-final .slot { font-size: 15px; padding: 11px; }
 
 .third-play-off {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 50%;
-  margin-bottom: 64px;
+  width: 100%;
   text-align: center;
 }
 .third-play-off .col-label {
