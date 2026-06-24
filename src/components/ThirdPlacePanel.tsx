@@ -48,7 +48,7 @@ export function ThirdPlacePanel({ rows, settled, contenders }: Props) {
                   ))}
                   {provisional && <span className="prov-mark" title="3rd place not yet decided">?</span>}
                 </td>
-                <td className="num">{pointsOf(r.standing)}</td>
+                <td className="num">{multi ? '—' : pointsOf(r.standing)}</td>
                 <td className="num">{multi ? '—' : gd > 0 ? `+${gd}` : gd}</td>
               </tr>
             )

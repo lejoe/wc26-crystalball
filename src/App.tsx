@@ -115,6 +115,11 @@ export function App() {
   const thirdContenders = useMemo(() => {
     const m = {} as Record<GroupLetter, string[]>
     for (const g of GROUP_LETTERS) {
+      if (!complete[g]) {
+        // Group still has matches: anyone who can still finish 3rd is a contender.
+        m[g] = possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []
+        continue
+      }
       const ranked = groupRanks[g]
       const pos3 = ranked.find((r) => r.position === 3)
       if (!pos3) {
@@ -127,7 +132,7 @@ export function App() {
       }
     }
     return m
-  }, [groupRanks])
+  }, [groupRanks, complete, predictions, predScores])
 
   const thirdSettled = useMemo(() => {
     const m = {} as Record<GroupLetter, boolean>

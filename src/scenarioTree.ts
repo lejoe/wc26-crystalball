@@ -30,10 +30,15 @@ export type EndNode = {
   opponents?: OpponentList
   /** A 3rd-place finish with best-third qualification still open. */
   third?: {
+    team: string
+    group: GroupLetter
     /** Hypothetical final points for this team in this branch. */
     points: number
-    /** Final goal difference, when this branch pins it down (a draw). */
+    /** Final goal difference, when this branch pins it down (a draw) — for the odds gauge. */
     gd?: number
+    /** Current goal difference / goals for — used to place the team in the live race. */
+    curGd: number
+    curGf: number
   }
   text?: string
 }
@@ -45,6 +50,7 @@ export type ThirdRaceRow = {
   team: string
   points: number
   gd: number
+  gf: number
   /** The team still has a group match to play — its place can change. */
   toPlay: boolean
 }
@@ -99,6 +105,7 @@ export function bestThirdRace(): ThirdRaceRow[] {
     team: r.standing.team,
     points: pointsOf(r.standing),
     gd: gdOf(r.standing),
+    gf: r.standing.goalsFor,
     toPlay: r.standing.played < GROUPS[r.group].length - 1,
   }))
   return raceRows
@@ -251,6 +258,7 @@ function build(group: GroupLetter): Record<string, Node> {
     const ownFx = FIXTURES[group][ownIdx]
     const tGD = gdByTeam.get(team) ?? 0
     const tPts = ptsByTeam.get(team) ?? 0
+    const tGF = standings.find((s) => s.team === team)?.goalsFor ?? 0
     const ownSim = (r: OwnResult): SimOutcome => (r === 'draw' ? 'D' : r === 'win' === isHome ? 'H' : 'A')
     const ptsFor = (r: OwnResult) => tPts + (r === 'win' ? 3 : r === 'draw' ? 1 : 0)
 
@@ -276,7 +284,14 @@ function build(group: GroupLetter): Record<string, Node> {
             place: '3rd',
             zone: 'mid',
             set: u,
-            third: { points: ptsFor(own), gd: own === 'draw' ? tGD : undefined },
+            third: {
+              team,
+              group,
+              points: ptsFor(own),
+              gd: own === 'draw' ? tGD : undefined,
+              curGd: tGD,
+              curGf: tGF,
+            },
           }
         return { type: 'end', place: 'Out', zone: 'bad', set: u, text: 'Out, no lifeline.' }
       }

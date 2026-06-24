@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { flagOf } from '../data/groups'
+import { rankThirds } from '../standings'
 import { bestThirdRace, THIRDS_ADVANCE, type ChoiceNode, type EndNode, type GdNoteNode, type MarginsNode, type Node, type OpponentList, type Zone } from '../scenarioTree'
 
 // ── Interactive "drill-down" scenario for a single team ──────────────────────
@@ -57,10 +58,20 @@ function oddsOf(points: number, gd?: number) {
   return { tag: 'Out', segs: 1, cls: 'bad' }
 }
 
-/** Predicted best-third odds for this finish, plus the live race for context. */
+/** Predicted best-third odds for this finish, plus the race resolved for this branch. */
 function ThirdResult({ third }: { third: NonNullable<EndNode['third']> }) {
   const o = oddsOf(third.points, third.gd)
-  const rows = bestThirdRace()
+  // The branch fixes this team as its group's 3rd: drop that group's current third
+  // from the live race and slot this team in (its group is now played), then re-rank.
+  const me = {
+    group: third.group,
+    team: third.team,
+    points: third.points,
+    gd: third.curGd,
+    gf: third.curGf,
+    toPlay: false,
+  }
+  const rows = rankThirds([...bestThirdRace().filter((r) => r.group !== third.group), me])
   return (
     <div className="race">
       <div className={`odds ${o.cls}`}>
@@ -71,18 +82,24 @@ function ThirdResult({ third }: { third: NonNullable<EndNode['third']> }) {
       </div>
       {rows.length > 0 && (
         <div className="rr">
-          <div className="rr-head">Best-third race now · top {THIRDS_ADVANCE} advance</div>
+          <div className="rr-head">Best-third race · top {THIRDS_ADVANCE} advance</div>
           <ol className="rr-list">
-            {rows.map((r) => (
-              <li key={r.group} className={`${r.rank <= THIRDS_ADVANCE ? 'adv' : 'rout'} ${r.rank === THIRDS_ADVANCE ? 'cut' : ''}`}>
-                <span className="rr-n">{r.rank}</span>
-                <span className="rr-flag">{flagOf(r.team)}</span>
-                <span className="rr-team" title={r.team}>{r.team}</span>
-                {r.toPlay && <span className="rr-tp" title="still has a match to play">●</span>}
-                <span className="rr-pts">{r.points}</span>
-                <span className="rr-gd">{fmtGD(r.gd)}</span>
-              </li>
-            ))}
+            {rows.map((r) => {
+              const isMe = r.group === third.group
+              return (
+                <li
+                  key={r.group}
+                  className={`${r.rank <= THIRDS_ADVANCE ? 'adv' : 'rout'} ${r.rank === THIRDS_ADVANCE ? 'cut' : ''} ${isMe ? 'me' : ''}`}
+                >
+                  <span className="rr-n">{r.rank}</span>
+                  <span className="rr-flag">{flagOf(r.team)}</span>
+                  <span className="rr-team" title={r.team}>{r.team}</span>
+                  {r.toPlay && <span className="rr-tp" title="still has a match to play">●</span>}
+                  <span className="rr-pts">{r.points}</span>
+                  <span className="rr-gd">{fmtGD(r.gd)}</span>
+                </li>
+              )
+            })}
           </ol>
           <div className="rr-note"><span className="rr-tp">●</span> still to play</div>
         </div>
@@ -306,6 +323,8 @@ const SCENARIO_CSS = `
   .scn .rr-list{list-style:none; margin:0; padding:0; font-variant-numeric:tabular-nums;}
   .scn .rr-list li{display:flex; align-items:center; gap:8px; padding:2.5px 0; font-size:11.5px; color:var(--txt2);}
   .scn .rr-list li.rout{opacity:.45;}
+  .scn .rr-list li.me{background:rgba(90,160,230,.12); border-radius:6px; margin:0 -8px; padding-left:8px; padding-right:8px; opacity:1;}
+  .scn .rr-list li.me .rr-team{color:var(--info);}
   .scn .rr-list li.cut{border-bottom:1px dashed var(--txt3); padding-bottom:6px; margin-bottom:5px;}
   .scn .rr-n{min-width:13px; text-align:right; color:var(--txt3); font-size:10.5px;}
   .scn .rr-flag{font-size:13px;}
