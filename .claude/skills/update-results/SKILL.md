@@ -1,6 +1,6 @@
 ---
 name: update-results
-description: "Fetch the prior day's real World Cup 2026 match results and write them into the data files. Use when the user says \"update results\", \"pull yesterday's scores\", \"refresh match results\", or when the daily results agent runs. Edits src/data/fixtures.ts (group stage) and src/data/bracketResults.ts (knockout), gates on tsc, and emits a summary with fuzzy-match flags."
+description: "Fetch newly-finished real World Cup 2026 match results and write them into the data files. Use when the user says \"update results\", \"pull yesterday's scores\", \"refresh match results\", or when the daily results agent runs. Edits src/data/fixtures.ts (group stage) and src/data/bracketResults.ts (knockout), gates on tsc, and emits a summary with fuzzy-match flags."
 ---
 
 # update-results
@@ -30,20 +30,41 @@ Files you read for mapping/orientation, never edit here:
 
 ### 1. Find what's missing
 - Read today's date.
-- Scan `FIXTURES` (all 12 groups) for rows dated **yesterday-or-earlier** with
-  `hs === null || as === null`.
+- Scan `FIXTURES` (all 12 groups) for rows dated **today-or-earlier** with
+  `hs === null || as === null`. (Today's matches are in scope, but only get
+  written if they're confirmed **final** — see step 2. Future-dated rows are
+  never candidates: a match that hasn't kicked off cannot have a result, and
+  treating one as fetchable invites a fabricated score from a preview/odds page.)
 - Scan `BRACKET_RESULTS` for knockout matches that should have been played by now
   but have no entry. (Knockout match dates are not in the codebase; use your
   knowledge of the real 2026 schedule and the sources you fetch.)
 - If nothing is missing, stop: emit a "nothing to update" summary and do not edit.
 
 ### 2. Fetch real results
-- For each missing match, fetch the final score from trustworthy, current (2026)
-  sources. Cross-check at least two when feasible.
-- A match dated yesterday that was **not yet final** at fetch time: skip it. It
-  stays "still upcoming" and is picked up on the next run.
-- Sources disagree and you cannot reconcile: leave that match unwritten and note
-  the conflict in the summary. Do not guess.
+
+**Primary source — ESPN scoreboard (free, no API key, structured).** For each
+match-day you need a result for, fetch the whole day in one call:
+
+    https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=YYYYMMDD
+
+For each `event` read `competitions[0].competitors[]` — each has `team.displayName`,
+`score`, and `homeAway` (`'home'`/`'away'`) — plus `status.type`.
+
+**The finality gate is a field read, not a judgment.** Write a match **only if
+`status.type.completed === true`**. Anything with `state` `'pre'` (not kicked
+off) or `'in'` (in progress) is skipped → "still upcoming", picked up next run.
+This replaces eyeballing live blogs: ESPN tells you finished-vs-live directly.
+
+**Fallback — Wikipedia.** If ESPN is unreachable, has no event for a match you
+expect, or returns a score you want to second-source, use the per-group article
+`https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_Group_X` (knockout:
+`https://en.wikipedia.org/wiki/2026_FIFA_World_Cup_knockout_stage`); judge
+freshness from its last-edited UTC timestamp. If ESPN and Wikipedia disagree and
+you cannot reconcile, leave the match unwritten and note the conflict. Do not guess.
+
+**Do not** open-endedly web-search and fetch arbitrary domains. The two sources
+above are the entire allowlist (`site.api.espn.com`, `en.wikipedia.org`); fetch
+their known URLs directly so every run hits the same domains.
 
 ### 3. Map each result to its row
 
@@ -93,8 +114,8 @@ Emit a concise report:
 - **Updated**: N matches (list group/knockout + score).
 - **Fuzzy-flagged**: M (each as `fetched → canonical`, needs human confirmation).
 - **Unmatched / unwritten**: K (with reason: conflict, assertion failed, no row).
-- **Still upcoming**: matches dated yesterday-or-earlier left unwritten because
-  not yet final.
+- **Still upcoming**: matches dated today-or-earlier left unwritten because
+  not yet final (still to kick off or in progress).
 
 ## Constraints
 - Never clear or migrate browser predictions.
