@@ -352,31 +352,40 @@ export type ThirdPlaceRow = {
   rank: number // 1-based across all 12 groups
 }
 
+/** The fields the best-third cascade ranks on. */
+export type ThirdKey = { group: GroupLetter; points: number; gd: number; gf: number }
+
 /**
- * Rank the third-placed team of each group by: points → gd → gf.
+ * Rank best-third entries by the FIFA cascade: points → goal difference →
+ * goals scored → group letter. Pure and order-independent: the input may be the
+ * current 3rd of each group, or a scenario-resolved mix. Extra fields on each
+ * entry are preserved; a 1-based `rank` is added.
+ */
+export function rankThirds<T extends ThirdKey>(entries: T[]): (T & { rank: number })[] {
+  return [...entries]
+    .sort(
+      (a, b) =>
+        b.points - a.points || b.gd - a.gd || b.gf - a.gf || a.group.localeCompare(b.group),
+    )
+    .map((e, i) => ({ ...e, rank: i + 1 }))
+}
+
+/**
+ * Rank the third-placed team of each group by the best-third cascade.
  * Groups with no determinable 3rd-place team (no data) are omitted.
  */
 export function rankThirdPlace(
   groups: Record<GroupLetter, TeamStanding[]>,
   h2h: H2HRecord[],
 ): ThirdPlaceRow[] {
-  const thirds: { group: GroupLetter; standing: TeamStanding }[] = []
+  const entries: (ThirdKey & { standing: TeamStanding })[] = []
   for (const g of Object.keys(groups) as GroupLetter[]) {
     const ranked = rankGroup(groups[g], h2h)
     const third = ranked.find((r) => r.position === 3)
     if (third && hasData(third.standing)) {
-      thirds.push({ group: g, standing: third.standing })
+      const s = third.standing
+      entries.push({ group: g, standing: s, points: pointsOf(s), gd: gdOf(s), gf: s.goalsFor })
     }
   }
-
-  thirds.sort((a, b) => {
-    const pa = pointsOf(a.standing)
-    const pb = pointsOf(b.standing)
-    if (pa !== pb) return pb - pa
-    if (gdOf(a.standing) !== gdOf(b.standing)) return gdOf(b.standing) - gdOf(a.standing)
-    if (a.standing.goalsFor !== b.standing.goalsFor) return b.standing.goalsFor - a.standing.goalsFor
-    return a.group.localeCompare(b.group)
-  })
-
-  return thirds.map((t, i) => ({ ...t, rank: i + 1 }))
+  return rankThirds(entries).map((e) => ({ group: e.group, standing: e.standing, rank: e.rank }))
 }

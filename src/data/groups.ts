@@ -29,6 +29,21 @@ export function groupOf(team: string): GroupLetter | undefined {
   return TEAM_GROUP[team]
 }
 
+/** Bucket teams by their group, sorted by group letter, for readable opponent lists. */
+export function groupCandidatesByGroup(teams: string[]): { g: GroupLetter; teams: string[] }[] {
+  const byGroup = new Map<GroupLetter, string[]>()
+  for (const t of teams) {
+    const g = groupOf(t)
+    if (!g) continue
+    const arr = byGroup.get(g)
+    if (arr) arr.push(t)
+    else byGroup.set(g, [t])
+  }
+  return [...byGroup.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([g, ts]) => ({ g, teams: ts }))
+}
+
 /** ISO 3166-1 alpha-2 codes for flag emoji rendering. */
 export const TEAM_CODE: Record<string, string> = {
   Mexico: 'MX', 'South Africa': 'ZA', 'Korea Republic': 'KR', Czechia: 'CZ',

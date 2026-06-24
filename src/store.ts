@@ -22,7 +22,10 @@ type Store = AppState & {
   setPrediction: (group: GroupLetter, index: number, outcome: Outcome | null) => void
   setScore: (group: GroupLetter, index: number, score: PredScore | null) => void
   setWinner: (matchId: number, side: Side | null) => void
-  resetAll: () => void
+  /** Clear group-stage picks (outcomes + exact scores); leaves the bracket. */
+  resetGroups: () => void
+  /** Clear knockout-bracket picks; leaves group-stage results. */
+  resetBracket: () => void
 }
 
 export const useStore = create<Store>()(
@@ -66,7 +69,8 @@ export const useStore = create<Store>()(
           return { bracketPredictions }
         }),
 
-      resetAll: () => set(initialState()),
+      resetGroups: () => set({ predictions: {}, predScores: {} }),
+      resetBracket: () => set({ bracketPredictions: {} }),
     }),
     {
       name: 'wc2026-prediction',

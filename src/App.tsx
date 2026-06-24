@@ -1,5 +1,5 @@
-import { useMemo } from 'react'
-import { GROUP_LETTERS } from './data/groups'
+import { lazy, Suspense, useMemo, useState } from 'react'
+import { GROUPS, GROUP_LETTERS } from './data/groups'
 import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, thirdPlaceContenders, predictedCount, nextMatchDate } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
@@ -9,7 +9,35 @@ import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket } from './components/Bracket'
-import type { GroupLetter, TeamStanding } from './types'
+import { AnalysisModal } from './components/AnalysisModal'
+import { TeamSearch, type SearchTeam } from './components/TeamSearch'
+import { analysisReady, groupAnalysisFacts } from './groupAnalysis'
+import { buildGroupScenarios, type Node } from './scenarioTree'
+import type { GroupLetter, StatusTone, TeamStanding } from './types'
+
+// Interactive situation analysis (per-team modal trees), built once from the
+// deterministic engine for the ready groups only. Independent of predictions.
+const ANALYSIS = (() => {
+  const tones: Partial<Record<GroupLetter, Map<string, StatusTone>>> = {}
+  const scenarios: Partial<Record<GroupLetter, Record<string, Node>>> = {}
+  for (const g of GROUP_LETTERS) {
+    if (!analysisReady(g)) continue
+    tones[g] = new Map(groupAnalysisFacts(g).teams.map((t) => [t.team, t.status]))
+    scenarios[g] = buildGroupScenarios(g)
+  }
+  return { tones, scenarios }
+})()
+
+// Every team, flagged with whether it has an open situation to analyse.
+const SEARCH_TEAMS: SearchTeam[] = GROUP_LETTERS.flatMap((g) =>
+  GROUPS[g].map((team) => ({ team, group: g, analyzable: !!ANALYSIS.scenarios[g]?.[team] })),
+)
+
+// Dev-only feedback/annotation widget. Lazy + DEV-gated so it is excluded from
+// the production bundle entirely.
+const DevFeedback = import.meta.env.DEV
+  ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation })))
+  : null
 
 const UPDATE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31536000], ['month', 2592000], ['week', 604800],
@@ -30,9 +58,18 @@ function relativeTime(iso: string): string {
 
 export function App() {
   const state = useStore()
-  const resetAll = useStore((s) => s.resetAll)
+  const resetGroups = useStore((s) => s.resetGroups)
+  const resetBracket = useStore((s) => s.resetBracket)
 
   const { predictions, predScores } = state
+  const hasGroupPicks = Object.keys(predictions).length > 0 || Object.keys(predScores).length > 0
+  const hasBracketPicks = Object.keys(state.bracketPredictions).length > 0
+
+  // Team picked from the header search — opens its situation-analysis popup.
+  const [searchTeam, setSearchTeam] = useState<string | null>(null)
+  const searchGroup = searchTeam ? SEARCH_TEAMS.find((t) => t.team === searchTeam)?.group : undefined
+  const searchRoot = searchTeam && searchGroup ? ANALYSIS.scenarios[searchGroup]?.[searchTeam] : undefined
+  const searchTone = searchTeam && searchGroup ? ANALYSIS.tones[searchGroup]?.get(searchTeam) : undefined
 
   const h2h = useMemo(() => effectiveH2H(predictions, predScores), [predictions, predScores])
 
@@ -96,10 +133,17 @@ export function App() {
   const thirdContenders = useMemo(() => {
     const m = {} as Record<GroupLetter, string[]>
     for (const g of GROUP_LETTERS) {
-      m[g] = thirdPlaceContenders(groups[g], h2h, incompleteGoalsTeams(g, predictions, predScores))
+      if (!complete[g]) {
+        // Group still has matches: anyone who can still finish 3rd is a contender.
+        m[g] = possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []
+      } else {
+        // Group decided: only teams genuinely level with the 3rd spot — teams
+        // locked above by head-to-head or goal difference are excluded.
+        m[g] = thirdPlaceContenders(groups[g], h2h, incompleteGoalsTeams(g, predictions, predScores))
+      }
     }
     return m
-  }, [groups, h2h, predictions, predScores])
+  }, [groups, complete, h2h, predictions, predScores])
 
   const thirdSettled = useMemo(() => {
     const m = {} as Record<GroupLetter, boolean>
@@ -123,30 +167,27 @@ export function App() {
   return (
     <div className="app">
       <header className="app-header">
-        <div>
-          <h1>FIFA World Cup 2026 — Prediction Tool</h1>
-          <div className="sub">Pick each match result, then predict the knockout bracket. Everything saves locally.</div>
+        <div className="header-lede">
+          <h1>FIFA World Cup 2026 — Crystal Ball</h1>
+          <div className="sub">See where teams stand, open any team's full situation, and explore the scenarios still in play.</div>
         </div>
-        <div className="header-actions">
-          <time
-            className="last-update"
-            dateTime={LAST_RESULTS_UPDATE}
-            title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
-          >
-            Results updated {relativeTime(LAST_RESULTS_UPDATE)}
-          </time>
-          <button
-            className="btn btn-danger"
-            onClick={() => {
-              if (confirm('Reset all predictions and results?')) resetAll()
-            }}
-          >
-            Reset all
-          </button>
+        <div className="header-side">
+          <TeamSearch teams={SEARCH_TEAMS} onSelect={setSearchTeam} />
         </div>
       </header>
 
-      <div className="section-title">Group Stage</div>
+      <div className="section-title">
+        <span>Group Stage</span>
+        <button
+          className="reset-link"
+          disabled={!hasGroupPicks}
+          onClick={() => {
+            if (hasGroupPicks && confirm('Reset all group-stage predictions?')) resetGroups()
+          }}
+        >
+          Reset group picks
+        </button>
+      </div>
       <div className="groups-grid">
         {GROUP_LETTERS.map((g) => (
           <GroupTable
@@ -158,6 +199,8 @@ export function App() {
             predicted={predicted[g]}
             nextDate={nextDates[g]}
             qual={qualStatus[g]}
+            tones={ANALYSIS.tones[g]}
+            scenarios={ANALYSIS.scenarios[g]}
           />
         ))}
       </div>
@@ -168,13 +211,51 @@ export function App() {
         <span className="chip"><span className="tie-flag">*</span> level — predict exact scores</span>
       </div>
 
-      <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
+      <div className="section-title">
+        <span>Best Third-Placed Teams <span className="section-sub">advisory ranking</span></span>
+      </div>
       <div className="third-section">
         <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
       </div>
 
-      <div className="section-title">Knockout Bracket</div>
+      <div className="section-title">
+        <span>Knockout Bracket</span>
+        <button
+          className="reset-link"
+          disabled={!hasBracketPicks}
+          onClick={() => {
+            if (hasBracketPicks && confirm('Reset all bracket predictions?')) resetBracket()
+          }}
+        >
+          Reset bracket picks
+        </button>
+      </div>
       <Bracket views={bracketViews} />
+
+      <footer className="app-footer">
+        <time
+          className="last-update"
+          dateTime={LAST_RESULTS_UPDATE}
+          title={new Date(LAST_RESULTS_UPDATE).toLocaleString()}
+        >
+          Match results updated {relativeTime(LAST_RESULTS_UPDATE)}
+        </time>
+      </footer>
+
+      {searchTeam && searchRoot && (
+        <AnalysisModal
+          team={searchTeam}
+          tone={(searchTone ?? 'in-balance') as StatusTone}
+          root={searchRoot}
+          onClose={() => setSearchTeam(null)}
+        />
+      )}
+
+      {DevFeedback && (
+        <Suspense fallback={null}>
+          <DevFeedback />
+        </Suspense>
+      )}
     </div>
   )
 }
