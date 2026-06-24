@@ -1,6 +1,6 @@
 import { resolveBracket, type MatchView } from './bracketResolve'
 import { FIXTURES } from './data/fixtures'
-import { GROUPS, groupCandidatesByGroup } from './data/groups'
+import { GROUPS, GROUP_LETTERS, groupCandidatesByGroup } from './data/groups'
 import {
   analysisReady,
   enumerate,
@@ -9,8 +9,9 @@ import {
   type OwnResult,
   type Scenario,
 } from './groupAnalysis'
-import { groupStandings } from './standings'
-import type { AppState, GroupLetter, SlotSource } from './types'
+import { effectiveH2H } from './h2h'
+import { gdOf, groupStandings, pointsOf, rankThirdPlace } from './standings'
+import type { AppState, GroupLetter, SlotSource, TeamStanding } from './types'
 
 // ── Node model (the interactive drill-down tree the modal walks) ─────────────
 // Generated at runtime from the deterministic engine, so it is correct by
@@ -27,8 +28,25 @@ export type EndNode = {
   /** Engine position set this leaf represents (1-based). Backs the dev assertion. */
   set: number[]
   opponents?: OpponentList
-  third?: { points: number; gd?: number }
+  /** A 3rd-place finish with best-third qualification still open. */
+  third?: {
+    /** Hypothetical final points for this team in this branch. */
+    points: number
+    /** Final goal difference, when this branch pins it down (a draw). */
+    gd?: number
+  }
   text?: string
+}
+
+/** A row of the live best-third race (real current results, no predictions). */
+export type ThirdRaceRow = {
+  rank: number
+  group: GroupLetter
+  team: string
+  points: number
+  gd: number
+  /** The team still has a group match to play — its place can change. */
+  toPlay: boolean
 }
 export type Opt = { label: string; place: string; zone: Zone; child: Node }
 export type ChoiceNode = {
@@ -66,6 +84,25 @@ export type Node = ChoiceNode | EndNode | MarginsNode | GdNoteNode
 type SimOutcome = 'H' | 'D' | 'A'
 const NO_PRED = {} as Record<string, never>
 const EMPTY_STATE: AppState = { predictions: {}, predScores: {}, bracketPredictions: {} }
+
+export const THIRDS_ADVANCE = 8
+
+/** The live best-third race from real results only (no predictions). Memoised. */
+let raceRows: ThirdRaceRow[] | null = null
+export function bestThirdRace(): ThirdRaceRow[] {
+  if (raceRows) return raceRows
+  const groups = {} as Record<GroupLetter, TeamStanding[]>
+  for (const g of GROUP_LETTERS) groups[g] = groupStandings(g, NO_PRED, NO_PRED)
+  raceRows = rankThirdPlace(groups, effectiveH2H(NO_PRED, NO_PRED)).map((r) => ({
+    rank: r.rank,
+    group: r.group,
+    team: r.standing.team,
+    points: pointsOf(r.standing),
+    gd: gdOf(r.standing),
+    toPlay: r.standing.played < GROUPS[r.group].length - 1,
+  }))
+  return raceRows
+}
 
 // ── small helpers ────────────────────────────────────────────────────────────
 const sortSet = (s: Set<number>): number[] => [...s].sort((a, b) => a - b)
@@ -240,7 +277,6 @@ function build(group: GroupLetter): Record<string, Node> {
             zone: 'mid',
             set: u,
             third: { points: ptsFor(own), gd: own === 'draw' ? tGD : undefined },
-            text: `Finishes third on ${ptsFor(own)} points; best-third place still to be decided.`,
           }
         return { type: 'end', place: 'Out', zone: 'bad', set: u, text: 'Out, no lifeline.' }
       }
