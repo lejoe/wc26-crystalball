@@ -101,21 +101,61 @@ export function groupComplete(
   return FIXTURES[group].every((_, i) => decidedOutcome(group, i, predictions, predScores) !== undefined)
 }
 
-/** Teams whose goal difference is incomplete: they have an outcome-only (scoreless) predicted match. */
+/** Whether a team's scoreless predicted matches include a draw, a decisive result, or both. */
+export type IncompleteKinds = { draw: boolean; decisive: boolean }
+/** Per-team map of incomplete goal data from outcome-only (scoreless) predicted matches. */
+export type IncompleteGoals = Map<string, IncompleteKinds>
+
+/**
+ * Teams whose goal difference is incomplete because they have an outcome-only
+ * (scoreless) predicted match, tagged by kind. A draw leaves goal difference
+ * unchanged (it only moves goals-for); a decisive result can move both.
+ */
 export function incompleteGoalsTeams(
   group: GroupLetter,
   predictions: Record<string, Outcome>,
   predScores: Record<string, PredScore> = NO_SCORES,
-): Set<string> {
-  const out = new Set<string>()
+): IncompleteGoals {
+  const out: IncompleteGoals = new Map()
+  const mark = (team: string, kind: keyof IncompleteKinds) => {
+    const cur = out.get(team) ?? { draw: false, decisive: false }
+    cur[kind] = true
+    out.set(team, cur)
+  }
   FIXTURES[group].forEach((f, i) => {
     if (knownScore(group, i, predScores)) return // played or has a predicted score
-    if (predictions[resultKey(group, i)]) {
-      out.add(f.home)
-      out.add(f.away)
-    }
+    const o = predictions[resultKey(group, i)]
+    if (!o) return
+    const kind = o === 'draw' ? 'draw' : 'decisive'
+    mark(f.home, kind)
+    mark(f.away, kind)
   })
   return out
+}
+
+/** How many of a group's matches the user has predicted (no real result yet). */
+export function predictedCount(
+  group: GroupLetter,
+  predictions: Record<string, Outcome>,
+  predScores: Record<string, PredScore> = NO_SCORES,
+): number {
+  let n = 0
+  FIXTURES[group].forEach((f, i) => {
+    if (f.hs !== null && f.as !== null) return // real result, not a prediction
+    const key = resultKey(group, i)
+    if (predictions[key] || predScores[key]) n++
+  })
+  return n
+}
+
+/** ISO date (YYYY-MM-DD) of the group's next not-yet-played match, or null. */
+export function nextMatchDate(group: GroupLetter): string | null {
+  let best: string | null = null
+  for (const f of FIXTURES[group]) {
+    if (f.hs !== null && f.as !== null) continue // already played
+    if (best === null || f.date < best) best = f.date
+  }
+  return best
 }
 
 export type RankedRow = {
@@ -170,7 +210,7 @@ function h2hStats(
 export function rankGroup(
   standings: TeamStanding[],
   h2h: H2HRecord[],
-  incompleteGoals: Set<string> = new Set(),
+  incompleteGoals: IncompleteGoals = new Map(),
 ): RankedRow[] {
   const order = new Map(standings.map((s, i) => [s.team, i]))
   const drawIndex = (s: TeamStanding) => order.get(s.team) ?? 0
@@ -235,9 +275,16 @@ export function rankGroup(
         const h2hEqual =
           !sn || !ss || (sn.pts === ss.pts && sn.gd === ss.gd && sn.gf === ss.gf)
         if (!h2hEqual) continue
-        if (incompleteGoals.has(standing.team) || incompleteGoals.has(n.team)) {
-          needsScores = true
-        } else if (gdOf(n) === gdOf(standing) && n.goalsFor === standing.goalsFor) {
+        const ia = incompleteGoals.get(standing.team)
+        const ib = incompleteGoals.get(n.team)
+        const gdEqual = gdOf(n) === gdOf(standing)
+        if (ia || ib) {
+          // A pending exact score only changes the order when goal difference is
+          // currently level (so goals-for would decide it) or a decisive pending
+          // result could still move goal difference. Pending draws are GD-neutral,
+          // so when GD already separates the pair the order is locked.
+          if (gdEqual || ia?.decisive || ib?.decisive) needsScores = true
+        } else if (gdEqual && n.goalsFor === standing.goalsFor) {
           unresolved = true
         }
       }

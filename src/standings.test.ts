@@ -68,7 +68,7 @@ describe('rankGroup tiebreaker cascade', () => {
     const ranked = rankGroup(
       [st('A', 1, 1, 0, 3, 2), st('B', 1, 1, 0, 3, 2)],
       [h2h('A', 'B', 1, 0, 1)],
-      new Set(['A']),
+      new Map([['A', { draw: true, decisive: false }]]),
     )
     expect(ranked.every((r) => r.needsScores)).toBe(true)
     expect(ranked.every((r) => r.unresolved)).toBe(false)
