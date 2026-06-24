@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { GROUPS, GROUP_LETTERS } from './data/groups'
-import { rankGroup, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
+import { rankGroup, groupStandings, groupComplete, incompleteGoalsTeams, thirdPlaceContenders, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
@@ -135,18 +135,13 @@ export function App() {
       const pos3 = ranked.find((r) => r.position === 3)
       if (!pos3) continue
 
-      // Teams that could still be this group's 3rd, predictions included.
-      let candidateTeams: string[]
-      if (complete[g]) {
-        if (pos3.needsScores || pos3.unresolved) {
-          const p = pointsOf(pos3.standing)
-          candidateTeams = ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
-        } else {
-          candidateTeams = [pos3.standing.team]
-        }
-      } else {
-        candidateTeams = possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []
-      }
+      // Teams that could still be this group's 3rd, predictions included. Once a
+      // group is decided, exclude teams locked above third by head-to-head or
+      // goal difference (a +6 side level on points can't actually be third);
+      // while it is still open, anyone who can still reach 3rd is a candidate.
+      const candidateTeams = complete[g]
+        ? thirdPlaceContenders(groups[g], h2h, incompleteGoalsTeams(g, predictions, predScores))
+        : possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []
 
       if (candidateTeams.length <= 1) {
         const team = candidateTeams[0] ?? pos3.standing.team

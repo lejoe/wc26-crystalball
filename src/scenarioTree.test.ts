@@ -8,7 +8,8 @@ import { describe, expect, it, vi } from 'vitest'
 //
 // These scores reproduce the exact situations verified in the browser:
 //   A: Mexico through; Czechia both-win goal-difference battle; Korea merge.
-//   B: Canada/Switzerland drawn-opponent GD asymmetry; Bosnia 3rd-vs-4th draw.
+//   B: a final-margin swing can still drop Switzerland/Canada to 3rd or lift
+//      Bosnia/Qatar to 2nd; Bosnia 3rd-vs-4th draw stays GD-deterministic.
 //   C: Haiti eliminated.
 vi.mock('./data/fixtures', async (importOriginal) => {
   const actual = await importOriginal<typeof import('./data/fixtures')>()
@@ -30,9 +31,35 @@ vi.mock('./data/fixtures', async (importOriginal) => {
 })
 
 import { analysisReady, enumerate, groupAnalysisFacts, groupFingerprint } from './groupAnalysis'
-import { buildGroupScenarios } from './scenarioTree'
+import { buildGroupScenarios, gdVerdict } from './scenarioTree'
 import type { ChoiceNode, EndNode, GdNoteNode, MarginsNode, Node, Opt } from './scenarioTree'
 import { groupStandings } from './standings'
+
+describe('gdVerdict (goal-difference tiebreak, unbounded margins)', () => {
+  it('keeps the order open when the subject loses while the rival wins', () => {
+    // Switzerland (+3) loses, Qatar (-5) wins: a heavy enough loss + big win flips
+    // it, so 3rd must stay reachable rather than collapsing to a locked 2nd.
+    expect(gdVerdict('lose', 'win', 3, -5)).toBe('open')
+  })
+
+  it('keeps the order open when the subject wins while the rival loses', () => {
+    // Bosnia (-3) wins big while Canada (+6) loses big can overtake on GD.
+    expect(gdVerdict('win', 'lose', -3, 6)).toBe('open')
+  })
+
+  it('resolves two draws on current goal difference (no margins can move)', () => {
+    expect(gdVerdict('draw', 'draw', -3, -5)).toBe('self')
+    expect(gdVerdict('draw', 'draw', -5, -3)).toBe('rival')
+  })
+
+  it('a win cannot be caught by a rival who only draws when already ahead', () => {
+    expect(gdVerdict('win', 'draw', 2, 0)).toBe('self')
+  })
+
+  it('both teams winning distinct games is always open', () => {
+    expect(gdVerdict('win', 'win', 5, -5)).toBe('open')
+  })
+})
 
 const asChoice = (n: Node | undefined): ChoiceNode => {
   expect(n?.type).toBe('choice')
@@ -144,26 +171,35 @@ describe('Group A trees', () => {
   })
 })
 
-describe('Group B trees (goal-difference asymmetry)', () => {
+describe('Group B trees (goal difference can still swing on the final margins)', () => {
   const trees = buildGroupScenarios('B')
 
-  it('a draw against the direct rival keeps the better-GD team ahead (Canada -> 1st)', () => {
+  it('a win or draw keeps the better-GD leader top (Canada -> 1st), but a heavy loss can still drop it to 3rd', () => {
     const root = asChoice(trees['Canada'])
     const wod = optByLabel(root, 'Win or draw')
     expect(wod.place).toBe('1st')
     expect((wod.child as EndNode).place).toBe('1st')
-    expect(optByLabel(root, 'Lose').place).toBe('2nd')
+    // Canada (+6) drew Bosnia head-to-head, so a big enough loss while Bosnia
+    // wins big flips the goal-difference order: 3rd is live, not a locked 2nd.
+    expect(optByLabel(root, 'Lose').place).toBe('2nd / 3rd')
   })
 
-  it('the same draw drops the worse-GD team (Switzerland -> 2nd)', () => {
+  it('Switzerland is through on a win or draw, but a loss leaves 3rd reachable', () => {
     const root = asChoice(trees['Switzerland'])
     expect(optByLabel(root, 'Win').place).toBe('1st')
-    expect(optByLabel(root, 'Draw or lose').place).toBe('2nd')
+    expect(optByLabel(root, 'Draw').place).toBe('2nd')
+    // The reported bug: "Draw or lose -> 2nd" hid that a loss (with Qatar beating
+    // Bosnia) can still drop Switzerland to 3rd on goal difference.
+    const lose = optByLabel(root, 'Lose')
+    expect(lose.place).toBe('2nd / 3rd')
+    const parallel = asChoice(lose.child)
+    expect(parallel.kind).toBe('parallel')
+    expect(parallel.options.map((o) => o.place)).toContain('2nd / 3rd')
   })
 
-  it('resolves a 3rd-vs-4th draw deterministically on goal difference (Bosnia -> 3rd)', () => {
+  it('a draw resolves 3rd-vs-4th deterministically on goal difference (Bosnia -> 3rd); a win can even reach 2nd', () => {
     const root = asChoice(trees['Bosnia and Herzegovina'])
-    expect(optByLabel(root, 'Win').place).toBe('3rd')
+    expect(optByLabel(root, 'Win').place).toBe('2nd / 3rd')
     expect(optByLabel(root, 'Lose').place).toBe('Out')
 
     const draw = optByLabel(root, 'Draw')
@@ -172,13 +208,13 @@ describe('Group B trees (goal-difference asymmetry)', () => {
     expect(gd.type).toBe('gdnote')
     expect(gd.self.team).toBe('Bosnia and Herzegovina')
     expect(gd.rival.team).toBe('Qatar')
-    expect(gd.self.gd).toBeGreaterThan(gd.rival.gd) // -3 vs -6
+    expect(gd.self.gd).toBeGreaterThan(gd.rival.gd) // -3 vs -5
     expect(gd.result.place).toBe('3rd')
   })
 
-  it('the mirror team is out on the same draw (Qatar)', () => {
+  it('the bottom team can still snatch 2nd with a big enough win (Qatar)', () => {
     const root = asChoice(trees['Qatar'])
-    expect(optByLabel(root, 'Win').place).toBe('3rd')
+    expect(optByLabel(root, 'Win').place).toBe('2nd / 3rd')
     expect(optByLabel(root, 'Draw or lose').place).toBe('Out')
   })
 })

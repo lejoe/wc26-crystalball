@@ -294,6 +294,58 @@ export function rankGroup(
   })
 }
 
+/**
+ * Teams that could still be a group's third-placed team. Usually just the team
+ * currently ranked third, but when its spot is a genuine tie — level on points,
+ * head-to-head, and goal difference, with the order still movable by a pending
+ * exact score — every interchangeable team is included.
+ *
+ * A team already separated from the third spot by head-to-head or by a decided
+ * goal-difference margin is NOT a contender: it is locked above (or below)
+ * third, so it cannot be the third-placed team. This keeps a side like a +6
+ * group leader out of the third-place advisory ranking even while its group is
+ * level on points — predicting an exact score for an already-decided outcome
+ * can't drop it.
+ */
+export function thirdPlaceContenders(
+  standings: TeamStanding[],
+  h2h: H2HRecord[],
+  incompleteGoals: IncompleteGoals = new Map(),
+): string[] {
+  const ranked = rankGroup(standings, h2h, incompleteGoals)
+  const pos3 = ranked.find((r) => r.position === 3)
+  if (!pos3 || !hasData(pos3.standing)) return pos3 ? [pos3.standing.team] : []
+
+  const base = pos3.standing
+  const p = pointsOf(base)
+  const cluster = standings.filter((s) => pointsOf(s) === p && hasData(s))
+  if (cluster.length <= 1) return [base.team]
+
+  const names = new Set(cluster.map((s) => s.team))
+  const statOf = (team: string) => {
+    const others = new Set(names)
+    others.delete(team)
+    return h2hStats(team, others, h2h).stat
+  }
+  const sBase = statOf(base.team)
+
+  const contenders = cluster.filter((s) => {
+    if (s.team === base.team) return true
+    // Separated by head-to-head → locked relative to third.
+    const ss = statOf(s.team)
+    if (ss.pts !== sBase.pts || ss.gd !== sBase.gd || ss.gf !== sBase.gf) return false
+    // Separated by a decided goal-difference margin → locked relative to third.
+    if (gdOf(s) !== gdOf(base)) return false
+    // Goal difference is level: still a contender if a pending exact score could
+    // move it, or if not even goals-for separates the pair.
+    if (incompleteGoals.get(s.team) || incompleteGoals.get(base.team)) return true
+    return s.goalsFor === base.goalsFor
+  })
+
+  const posOf = new Map(ranked.map((r) => [r.standing.team, r.position]))
+  return contenders.map((s) => s.team).sort((a, b) => posOf.get(a)! - posOf.get(b)!)
+}
+
 export type ThirdPlaceRow = {
   group: GroupLetter
   standing: TeamStanding

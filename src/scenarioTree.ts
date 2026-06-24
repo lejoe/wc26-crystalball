@@ -118,6 +118,36 @@ const fmt = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
 const ORD: Record<number, string> = { 1: '1st', 2: '2nd', 3: '3rd', 4: '4th' }
 const ZONE_RANK: Record<Zone, number> = { good: 0, mid: 1, bad: 2 }
 
+/** Representative final goal-difference swing for a result (minimum decisive margin). */
+const gdSwing = (r: OwnResult): number => (r === 'win' ? 1 : r === 'lose' ? -1 : 0)
+
+/**
+ * Who wins a goal-difference tiebreak between two level teams, given each side's
+ * own result and current goal difference. Margins are unbounded (any scoreline),
+ * so a win can add any positive amount and a loss subtract any amount: the order
+ * is only fixed when even the extreme margins can't cross the current gap.
+ *
+ *   'self'  → the subject is always ahead on GD (the better place)
+ *   'rival' → the subject is always behind (the worse place)
+ *   'open'  → the final margins decide it, so both places stay reachable
+ *
+ * The previous model treated a loss as GD-neutral, so e.g. "I lose AND my rival
+ * wins" wrongly resolved to the better place — hiding a real drop (a heavy loss
+ * plus a big rival win flips it). That is the case this classifies as 'open'.
+ */
+export function gdVerdict(
+  self: OwnResult,
+  rival: OwnResult,
+  selfGD: number,
+  rivalGD: number,
+): 'self' | 'rival' | 'open' {
+  const lo = (r: OwnResult, gd: number) => (r === 'win' ? gd + 1 : r === 'draw' ? gd : -Infinity)
+  const hi = (r: OwnResult, gd: number) => (r === 'win' ? Infinity : r === 'draw' ? gd : gd - 1)
+  if (lo(self, selfGD) > hi(rival, rivalGD)) return 'self'
+  if (hi(self, selfGD) < lo(rival, rivalGD)) return 'rival'
+  return 'open'
+}
+
 function zoneOf(set: number[]): Zone {
   const u = [...new Set(set)]
   const mn = Math.min(...u)
@@ -321,30 +351,48 @@ function build(group: GroupLetter): Record<string, Node> {
         const rivalIsParHome = rival === parHome
         rivalResult = po === 'D' ? 'draw' : (po === 'H') === rivalIsParHome ? 'win' : 'lose'
       }
+      const verdict = gdVerdict(own, rivalResult, tGD, rGD)
       const bothWinDistinct = own === 'win' && !rivalIsOpponent && rivalResult === 'win'
 
-      if (bothWinDistinct) {
-        terminals.push({ own, pars, set })
-        const gap = tGD - rGD
-        const lead =
-          gap > 0 ? `${team} start +${gap} ahead` : gap < 0 ? `${team} start ${-gap} behind` : `${team} and ${rival} start level`
-        return {
-          type: 'margins',
-          note: `Goal difference decides. ${lead} (${fmt(tGD)} vs ${fmt(rGD)}).`,
-          self: { team, gd: tGD },
-          rival: { team: rival, gd: rGD },
-          set,
-          win: endNode([better], own),
-          lose: endNode([worse], own),
+      if (verdict === 'open') {
+        // Both win their distinct games → an interactive margins battle.
+        if (bothWinDistinct) {
+          terminals.push({ own, pars, set })
+          const gap = tGD - rGD
+          const lead =
+            gap > 0 ? `${team} start +${gap} ahead` : gap < 0 ? `${team} start ${-gap} behind` : `${team} and ${rival} start level`
+          return {
+            type: 'margins',
+            note: `Goal difference decides. ${lead} (${fmt(tGD)} vs ${fmt(rGD)}).`,
+            self: { team, gd: tGD },
+            rival: { team: rival, gd: rGD },
+            set,
+            win: endNode([better], own),
+            lose: endNode([worse], own),
+          }
         }
+        // Otherwise (e.g. the subject loses while the rival wins) the order still
+        // hinges on the final margins, so keep both places — including a live 3rd
+        // — visible rather than collapsing to the better one.
+        terminals.push({ own, pars, set })
+        const range = endNode(set, own)
+        if (better === 2 && worse === 3) {
+          range.third = {
+            team,
+            group,
+            points: ptsFor(own),
+            gd: own === 'draw' ? tGD : undefined,
+            curGd: tGD,
+            curGf: tGF,
+          }
+        }
+        return range
       }
 
-      // Deterministic: at least one side's margin is fixed (a draw or a loss), so
-      // the goal-difference order does not depend on a margin the user can set.
-      const swing = (r: OwnResult) => (r === 'win' ? 1 : 0) // wins here take their minimum decisive margin
-      const tFinal = tGD + swing(own)
-      const rFinal = rGD + swing(rivalResult)
-      const place = tFinal > rFinal ? better : worse
+      // Deterministic: the goal-difference order can't flip given these results.
+      const tFinal = tGD + gdSwing(own)
+      const rFinal = rGD + gdSwing(rivalResult)
+      const place = verdict === 'self' ? better : worse
       terminals.push({ own, pars, set })
       return {
         type: 'gdnote',
