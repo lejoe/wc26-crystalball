@@ -351,6 +351,7 @@ td.editable.locked { color: var(--text); cursor: default; }
   align-items: center;
   position: relative;
   width: 100%;
+  padding: 7px 0;
 }
 .bcell > .match { width: 100%; }
 
@@ -465,14 +466,20 @@ td.editable.locked { color: var(--text); cursor: default; }
   display: flex;
   align-items: center;
   gap: 7px;
-  padding: 7px 9px;
+  padding: 11px 9px;
   border-bottom: 1px solid var(--line);
   font-size: 13px;
 }
 .slot:last-child { border-bottom: none; }
 .slot.clickable { cursor: pointer; }
 .slot.clickable:hover { background: var(--panel-2); }
-.slot.winner { background: color-mix(in srgb, var(--win) 38%, transparent); font-weight: 600; }
+.slot.winner { font-weight: 600; }
+/* Entry source as a subtle fill: green = team locked by real results, orange =
+   prediction-based. The advancing side reads as a stronger shade of the same hue. */
+.slot.entry-real { background: color-mix(in srgb, var(--advance) 30%, transparent); }
+.slot.entry-pred { background: color-mix(in srgb, var(--third) 30%, transparent); }
+.slot.winner.entry-real { background: color-mix(in srgb, var(--advance) 55%, transparent); }
+.slot.winner.entry-pred { background: color-mix(in srgb, var(--third) 55%, transparent); }
 .slot.eliminated { opacity: 0.4; }
 .slot .flag { font-size: 14px; }
 .slot .slot-team { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

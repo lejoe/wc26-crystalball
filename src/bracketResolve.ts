@@ -1,5 +1,6 @@
 import { MATCHES } from './data/bracket'
 import { BRACKET_RESULTS } from './data/bracketResults'
+import { FIXTURES } from './data/fixtures'
 import { GROUP_LETTERS } from './data/groups'
 import {
   rankGroup,
@@ -19,6 +20,7 @@ import type { AppState, GroupLetter, MatchDef, Side, SlotSource } from './types'
 export type SlotView = {
   team: string | null // resolved qualifier, when known
   certain: boolean // true when standings/bracket fully determine it
+  confirmed: boolean // true only when real results (not predictions) lock the team
   candidates: string[] // potential teams when not yet known
   label: string // short source label, e.g. "1st A", "Winner M74", "3rd ABCDF"
 }
@@ -93,26 +95,32 @@ function assignThirds(thirdRanked: ThirdPlaceRow[]): Record<string, string> {
   return out
 }
 
-function groupSlot(src: Extract<SlotSource, { kind: 'pos' }>, ctx: GroupCtx): SlotView {
+function groupSlot(
+  src: Extract<SlotSource, { kind: 'pos' }>,
+  ctx: GroupCtx,
+  realCands: Map<number, string[]>,
+): SlotView {
   const label = slotLabel(src)
-  if (!ctx.hasData) return { team: null, certain: false, candidates: [], label }
+  // Locked by real results alone when real-only standings force a single team.
+  const confirmed = (realCands.get(src.pos)?.length ?? 0) === 1
+  if (!ctx.hasData) return { team: null, certain: false, confirmed: false, candidates: [], label }
 
   if (ctx.complete) {
     const row = ctx.ranked.find((r) => r.position === src.pos)!
     if (!row.unresolved && !row.needsScores) {
-      return { team: row.standing.team, certain: true, candidates: [], label }
+      return { team: row.standing.team, certain: true, confirmed, candidates: [], label }
     }
     // Complete group whose order at this spot isn't settled (needs an exact
     // score, or genuinely tied) → show the level teams as candidates.
     const p = pointsOf(row.standing)
     const cluster = ctx.ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
-    return { team: null, certain: false, candidates: cluster, label }
+    return { team: null, certain: false, confirmed: false, candidates: cluster, label }
   }
 
   // In progress: candidates that can still reach this position.
   const list = ctx.candidates?.get(src.pos) ?? []
-  if (list.length === 1) return { team: list[0], certain: true, candidates: [], label }
-  return { team: null, certain: false, candidates: list, label }
+  if (list.length === 1) return { team: list[0], certain: true, confirmed, candidates: [], label }
+  return { team: null, certain: false, confirmed: false, candidates: list, label }
 }
 
 function thirdSlot(
@@ -120,11 +128,14 @@ function thirdSlot(
   ctxByGroup: Record<GroupLetter, GroupCtx>,
   assignment: Record<string, string>,
   allGroupsComplete: boolean,
+  realAllComplete: boolean,
+  realAssignment: Record<string, string>,
 ): SlotView {
   const label = slotLabel(src)
   if (allGroupsComplete) {
     const team = assignment[src.slot] ?? null
-    return { team, certain: !!team, candidates: [], label }
+    const confirmed = realAllComplete && !!realAssignment[src.slot]
+    return { team, certain: !!team, confirmed, candidates: [], label }
   }
   // Potential third-placed teams from each allowed group.
   const set = new Set<string>()
@@ -138,7 +149,7 @@ function thirdSlot(
       for (const t of ctx.candidates?.get(3) ?? []) set.add(t)
     }
   }
-  return { team: null, certain: false, candidates: [...set], label }
+  return { team: null, certain: false, confirmed: false, candidates: [...set], label }
 }
 
 /**
@@ -174,7 +185,23 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
   const thirdRanked = rankThirdPlace(groups, h2h)
   const assignment = assignThirds(thirdRanked)
 
+  // Real-only resolution: what real results alone lock in, ignoring every
+  // prediction. Used to mark which filled bracket entries are still
+  // prediction-based (orange) versus locked by results (green).
+  const realH2H = effectiveH2H({}, {})
+  const realGroups = {} as Record<GroupLetter, ReturnType<typeof groupStandings>>
+  const realCand = {} as Record<GroupLetter, Map<number, string[]>>
+  let realAllComplete = true
+  for (const g of GROUP_LETTERS) {
+    realGroups[g] = groupStandings(g, {}, {})
+    if (!FIXTURES[g].every((f) => f.hs !== null && f.as !== null)) realAllComplete = false
+    realCand[g] = possibleGroupPositions(g, {}, {}).candidates
+  }
+  const realAssignment = assignThirds(rankThirdPlace(realGroups, realH2H))
+
   const views: Record<number, MatchView> = {}
+  // Per match: did a real result (not a pick) decide the winner?
+  const realWinner: Record<number, boolean> = {}
 
   // The side that advances from a match (or null), and the side that loses.
   const advancing = (m: MatchView | undefined): SlotView | null =>
@@ -185,20 +212,23 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
   const slotView = (src: SlotSource): SlotView => {
     switch (src.kind) {
       case 'pos':
-        return groupSlot(src, ctx[src.group])
+        return groupSlot(src, ctx[src.group], realCand[src.group])
       case 'third':
-        return thirdSlot(src, ctx, assignment, allGroupsComplete)
+        return thirdSlot(src, ctx, assignment, allGroupsComplete, realAllComplete, realAssignment)
       case 'winner': {
         const adv = advancing(views[src.match])
+        // Confirmed only if a real result decided the feeder AND its team is itself locked.
+        const real = realWinner[src.match] === true
         return adv
-          ? { team: adv.team, certain: !!adv.team, candidates: adv.candidates, label: slotLabel(src) }
-          : { team: null, certain: false, candidates: [], label: slotLabel(src) }
+          ? { team: adv.team, certain: !!adv.team, confirmed: real && adv.confirmed, candidates: adv.candidates, label: slotLabel(src) }
+          : { team: null, certain: false, confirmed: false, candidates: [], label: slotLabel(src) }
       }
       case 'loser': {
         const los = losing(views[src.match])
+        const real = realWinner[src.match] === true
         return los
-          ? { team: los.team, certain: !!los.team, candidates: los.candidates, label: slotLabel(src) }
-          : { team: null, certain: false, candidates: [], label: slotLabel(src) }
+          ? { team: los.team, certain: !!los.team, confirmed: real && los.confirmed, candidates: los.candidates, label: slotLabel(src) }
+          : { team: null, certain: false, confirmed: false, candidates: [], label: slotLabel(src) }
       }
     }
   }
@@ -211,6 +241,7 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
     const pick: Side | null = stored === 'a' || stored === 'b' ? stored : null
     const real = BRACKET_RESULTS[def.id]
     const realSide: Side | null = real ? (real.hs > real.as ? 'a' : 'b') : null
+    realWinner[def.id] = realSide != null
     const winnerSide = realSide ?? pick
     views[def.id] = { def, a, b, winnerSide }
   }
