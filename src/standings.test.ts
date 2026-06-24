@@ -1,112 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { gdOf, pointsOf, rankGroup, thirdPlaceContenders, type IncompleteGoals } from './standings'
+import { gdOf, minThirdFromBase, minThirdPlacePoints, pointsOf, rankGroup, thirdPlaceContenders, type IncompleteGoals } from './standings'
+import { GROUP_LETTERS } from './data/groups'
 import type { H2HRecord, TeamStanding } from './types'
-
-/** Build a standing with the given points (via W/D) and goal difference. */
-function team(
-  name: string,
-  pts: number,
-  gd: number,
-  opts: { gf?: number; played?: number } = {},
-): TeamStanding {
-  const won = Math.floor(pts / 3)
-  const drawn = pts % 3
-  const played = opts.played ?? won + drawn + 1
-  const goalsFor = opts.gf ?? Math.max(gd, 0) + 1
-  return {
-    team: name,
-    played,
-    won,
-    drawn,
-    lost: played - won - drawn,
-    goalsFor,
-    goalsAgainst: goalsFor - gd,
-  }
-}
-
-/** A drawn head-to-head between two teams (level on h2h points, gd, gf). */
-function drawH2H(a: string, b: string): H2HRecord {
-  return { teamA: a, teamB: b, pointsA: 1, gdA: 0, goalsA: 1 }
-}
-
-/** A → B head-to-head win (separates them on h2h points). */
-function winH2H(a: string, b: string): H2HRecord {
-  return { teamA: a, teamB: b, pointsA: 3, gdA: 1, goalsA: 1 }
-}
-
-function pending(...teams: string[]): IncompleteGoals {
-  const m: IncompleteGoals = new Map()
-  for (const t of teams) m.set(t, { draw: false, decisive: true })
-  return m
-}
-
-describe('thirdPlaceContenders', () => {
-  it('excludes a same-points team that is locked above third by goal difference', () => {
-    // Mirrors the real Group B bug: a +6 side level on points with the third
-    // team (and level head-to-head) was wrongly listed as a third contender.
-    const standings = [
-      team('Leader', 7, 4),
-      team('BigGD', 4, 6), // like Canada: huge goal difference, can't be third
-      team('Third', 4, -3), // like Bosnia: the actual third-placed team
-      team('Bottom', 1, -7),
-    ]
-    const h2h = [drawH2H('BigGD', 'Third')]
-    // Both have an outcome-only predicted match still pending (no exact score).
-    const incomplete = pending('BigGD', 'Third')
-
-    expect(thirdPlaceContenders(standings, h2h, incomplete)).toEqual(['Third'])
-  })
-
-  it('lists every team in a genuine goal-difference tie', () => {
-    const standings = [
-      team('Leader', 7, 4),
-      team('TieA', 4, 0, { gf: 3 }),
-      team('TieB', 4, 0, { gf: 3 }),
-      team('Bottom', 1, -7),
-    ]
-    const h2h = [drawH2H('TieA', 'TieB')]
-    const incomplete = pending('TieA', 'TieB')
-
-    expect(thirdPlaceContenders(standings, h2h, incomplete).sort()).toEqual(['TieA', 'TieB'])
-  })
-
-  it('excludes a same-points team separated by head-to-head', () => {
-    const standings = [
-      team('Leader', 7, 4),
-      team('H2HWinner', 4, 0, { gf: 3 }),
-      team('Third', 4, 0, { gf: 3 }),
-      team('Bottom', 1, -7),
-    ]
-    // Same points and same goal difference, but H2HWinner beat Third.
-    const h2h = [winH2H('H2HWinner', 'Third')]
-    const incomplete = pending('H2HWinner', 'Third')
-
-    expect(thirdPlaceContenders(standings, h2h, incomplete)).toEqual(['Third'])
-  })
-
-  it('returns a single team when third place is uniquely decided', () => {
-    const standings = [
-      team('Leader', 7, 4),
-      team('Second', 6, 2),
-      team('Third', 3, -1),
-      team('Bottom', 1, -7),
-    ]
-    expect(thirdPlaceContenders(standings, [])).toEqual(['Third'])
-  })
-
-  it('resolves a goal-difference-level pair once exact scores separate goals-for', () => {
-    // No pending matches (all scores known); goal difference level but goals-for
-    // differs, so the order is decided and only the third team remains.
-    const standings = [
-      team('Leader', 7, 4),
-      team('Higher', 4, 0, { gf: 5 }),
-      team('Third', 4, 0, { gf: 2 }),
-      team('Bottom', 1, -7),
-    ]
-    const h2h = [drawH2H('Higher', 'Third')]
-    expect(thirdPlaceContenders(standings, h2h)).toEqual(['Third'])
-  })
-})
 
 const st = (team: string, w: number, d: number, l: number, gf: number, ga: number): TeamStanding => ({
   team,
@@ -119,7 +14,7 @@ const st = (team: string, w: number, d: number, l: number, gf: number, ga: numbe
 })
 
 /** A head-to-head record for the A-vs-B match (points/gd/goals from A's view). */
-const h2hRec = (teamA: string, teamB: string, pointsA: number, gdA = 0, goalsA = 0): H2HRecord => ({
+const h2h = (teamA: string, teamB: string, pointsA: number, gdA = 0, goalsA = 0): H2HRecord => ({
   teamA,
   teamB,
   pointsA,
@@ -153,19 +48,19 @@ describe('rankGroup tiebreaker cascade', () => {
 
   it('breaks a points tie on head-to-head points (step 1)', () => {
     // Both on 3 points with identical overall GD/GF; only H2H separates them.
-    const ranked = rankGroup([st('A', 1, 0, 1, 2, 2), st('B', 1, 0, 1, 2, 2)], [h2hRec('A', 'B', 3, 1, 1)])
+    const ranked = rankGroup([st('A', 1, 0, 1, 2, 2), st('B', 1, 0, 1, 2, 2)], [h2h('A', 'B', 3, 1, 1)])
     expect(order(ranked)).toEqual(['A', 'B'])
   })
 
   it('falls to overall goal difference when the head-to-head is level (step 4)', () => {
     // Both 4 pts, drew each other (H2H equal) -> overall GD decides. A +3 beats B +1.
-    const ranked = rankGroup([st('B', 1, 1, 0, 3, 2), st('A', 1, 1, 0, 5, 2)], [h2hRec('A', 'B', 1, 0, 1)])
+    const ranked = rankGroup([st('B', 1, 1, 0, 3, 2), st('A', 1, 1, 0, 5, 2)], [h2h('A', 'B', 1, 0, 1)])
     expect(order(ranked)).toEqual(['A', 'B'])
   })
 
   it('flags an unbreakable tie as unresolved', () => {
     // Identical points, H2H draw, identical GD and GF -> genuinely inseparable.
-    const ranked = rankGroup([st('A', 1, 1, 0, 3, 2), st('B', 1, 1, 0, 3, 2)], [h2hRec('A', 'B', 1, 0, 1)])
+    const ranked = rankGroup([st('A', 1, 1, 0, 3, 2), st('B', 1, 1, 0, 3, 2)], [h2h('A', 'B', 1, 0, 1)])
     expect(ranked.every((r) => r.unresolved)).toBe(true)
     expect(ranked.every((r) => r.needsScores)).toBe(false)
   })
@@ -173,10 +68,113 @@ describe('rankGroup tiebreaker cascade', () => {
   it('flags needsScores when a tied team has incomplete goal data', () => {
     const ranked = rankGroup(
       [st('A', 1, 1, 0, 3, 2), st('B', 1, 1, 0, 3, 2)],
-      [h2hRec('A', 'B', 1, 0, 1)],
+      [h2h('A', 'B', 1, 0, 1)],
       new Map([['A', { draw: true, decisive: false }]]),
     )
     expect(ranked.every((r) => r.needsScores)).toBe(true)
     expect(ranked.every((r) => r.unresolved)).toBe(false)
+  })
+})
+
+describe('minThirdFromBase', () => {
+  it('returns the 3rd-highest total when nothing is open (settled)', () => {
+    expect(minThirdFromBase([9, 6, 3, 0], [])).toBe(3)
+    expect(minThirdFromBase([4, 4, 4, 1], [])).toBe(4)
+  })
+
+  it('takes the 3rd-highest from the worst scenario across open matches', () => {
+    // Two level contenders (idx 1 & 2) still play each other; the other two fixed.
+    // home win -> [6,6,3,1] -> 3rd-highest 3
+    // away win -> [6,3,6,1] -> 3
+    // draw     -> [6,4,4,1] -> 4   (the confrontation lifts the floor in this branch)
+    // MIN over scenarios = 3
+    expect(minThirdFromBase([6, 3, 3, 1], [[1, 2]])).toBe(3)
+  })
+
+  it('is the minimum over every open-match combination, not the current 3rd', () => {
+    // All four level, one remaining match between idx 2 & 3.
+    // win 2 -> [3,3,3,0] -> 3 ; win 3 -> [3,3,0,3] -> 3 ; draw -> [3,3,1,1] -> 1
+    // MIN = 1 (a draw drops the 3rd-highest below the current level)
+    expect(minThirdFromBase([3, 3, 0, 0], [[2, 3]])).toBe(1)
+  })
+
+  it('handles an all-open group: round-robin floors the 3rd-highest at 1', () => {
+    // Full 6-match round robin from scratch. Three teams cannot all reach 0 (they
+    // play each other), but two can be held to 1 (draw each other, lose to the top
+    // two), giving a 3rd-highest of 1 — the true floor.
+    const allOpen: [number, number][] = [
+      [0, 1], [2, 3], [0, 2], [1, 3], [0, 3], [1, 2],
+    ]
+    expect(minThirdFromBase([0, 0, 0, 0], allOpen)).toBe(1)
+  })
+
+  it('depends only on the points multiset, not team order or which team is 3rd', () => {
+    expect(minThirdFromBase([5, 3, 3, 3], [])).toBe(3)
+    expect(minThirdFromBase([3, 5, 3, 3], [])).toBe(3)
+    expect(minThirdFromBase([3, 3, 3, 5], [])).toBe(3)
+  })
+})
+
+describe('minThirdPlacePoints', () => {
+  it('returns a sensible non-negative number for every group', () => {
+    for (const g of GROUP_LETTERS) {
+      const min = minThirdPlacePoints(g)
+      expect(Number.isFinite(min)).toBe(true)
+      expect(min).toBeGreaterThanOrEqual(0)
+    }
+  })
+})
+
+// ── thirdPlaceContenders: who can still be a decided group's 3rd-placed team ──
+function team(
+  name: string,
+  pts: number,
+  gd: number,
+  opts: { gf?: number; played?: number } = {},
+): TeamStanding {
+  const won = Math.floor(pts / 3)
+  const drawn = pts % 3
+  const played = opts.played ?? won + drawn + 1
+  const goalsFor = opts.gf ?? Math.max(gd, 0) + 1
+  return { team: name, played, won, drawn, lost: played - won - drawn, goalsFor, goalsAgainst: goalsFor - gd }
+}
+
+/** A drawn head-to-head between two teams (level on h2h points, gd, gf). */
+const drawH2H = (a: string, b: string): H2HRecord => ({ teamA: a, teamB: b, pointsA: 1, gdA: 0, goalsA: 1 })
+/** A → B head-to-head win (separates them on h2h points). */
+const winH2H = (a: string, b: string): H2HRecord => ({ teamA: a, teamB: b, pointsA: 3, gdA: 1, goalsA: 1 })
+
+function pending(...teams: string[]): IncompleteGoals {
+  const m: IncompleteGoals = new Map()
+  for (const t of teams) m.set(t, { draw: false, decisive: true })
+  return m
+}
+
+describe('thirdPlaceContenders', () => {
+  it('excludes a same-points team that is locked above third by goal difference', () => {
+    // Mirrors the real Group B bug: a +6 side level on points with the third
+    // team (and level head-to-head) was wrongly listed as a third contender.
+    const standings = [team('Leader', 7, 4), team('BigGD', 4, 6), team('Third', 4, -3), team('Bottom', 1, -7)]
+    expect(thirdPlaceContenders(standings, [drawH2H('BigGD', 'Third')], pending('BigGD', 'Third'))).toEqual(['Third'])
+  })
+
+  it('lists every team in a genuine goal-difference tie', () => {
+    const standings = [team('Leader', 7, 4), team('TieA', 4, 0, { gf: 3 }), team('TieB', 4, 0, { gf: 3 }), team('Bottom', 1, -7)]
+    expect(thirdPlaceContenders(standings, [drawH2H('TieA', 'TieB')], pending('TieA', 'TieB')).sort()).toEqual(['TieA', 'TieB'])
+  })
+
+  it('excludes a same-points team separated by head-to-head', () => {
+    const standings = [team('Leader', 7, 4), team('H2HWinner', 4, 0, { gf: 3 }), team('Third', 4, 0, { gf: 3 }), team('Bottom', 1, -7)]
+    expect(thirdPlaceContenders(standings, [winH2H('H2HWinner', 'Third')], pending('H2HWinner', 'Third'))).toEqual(['Third'])
+  })
+
+  it('returns a single team when third place is uniquely decided', () => {
+    const standings = [team('Leader', 7, 4), team('Second', 6, 2), team('Third', 3, -1), team('Bottom', 1, -7)]
+    expect(thirdPlaceContenders(standings, [])).toEqual(['Third'])
+  })
+
+  it('resolves a goal-difference-level pair once exact scores separate goals-for', () => {
+    const standings = [team('Leader', 7, 4), team('Higher', 4, 0, { gf: 5 }), team('Third', 4, 0, { gf: 2 }), team('Bottom', 1, -7)]
+    expect(thirdPlaceContenders(standings, [drawH2H('Higher', 'Third')])).toEqual(['Third'])
   })
 })
