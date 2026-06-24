@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo } from 'react'
 import { GROUP_LETTERS } from './data/groups'
 import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf } from './standings'
 import { resolveBracket } from './bracketResolve'
@@ -9,10 +9,28 @@ import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket, ThirdPlacePlayoff } from './components/Bracket'
-import analysisFile from './data/groupAnalysis.json'
-import type { GroupAnalysisFile, GroupLetter, TeamStanding } from './types'
+import { analysisReady, groupAnalysisFacts } from './groupAnalysis'
+import { buildGroupScenarios, type Node } from './scenarioTree'
+import type { GroupLetter, StatusTone, TeamStanding } from './types'
 
-const GROUP_ANALYSIS = (analysisFile as unknown as GroupAnalysisFile).groups
+// Interactive situation analysis (per-team modal trees), built once from the
+// deterministic engine for the ready groups only. Independent of predictions.
+const ANALYSIS = (() => {
+  const tones: Partial<Record<GroupLetter, Map<string, StatusTone>>> = {}
+  const scenarios: Partial<Record<GroupLetter, Record<string, Node>>> = {}
+  for (const g of GROUP_LETTERS) {
+    if (!analysisReady(g)) continue
+    tones[g] = new Map(groupAnalysisFacts(g).teams.map((t) => [t.team, t.status]))
+    scenarios[g] = buildGroupScenarios(g)
+  }
+  return { tones, scenarios }
+})()
+
+// Dev-only feedback/annotation widget. Lazy + DEV-gated so it is excluded from
+// the production bundle entirely.
+const DevFeedback = import.meta.env.DEV
+  ? lazy(() => import('agentation').then((m) => ({ default: m.Agentation })))
+  : null
 
 const UPDATE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ['year', 31536000], ['month', 2592000], ['week', 604800],
@@ -164,7 +182,8 @@ export function App() {
             complete={complete[g]}
             needsScores={needsScores[g]}
             decided={decided[g]}
-            analysis={GROUP_ANALYSIS[g]}
+            tones={ANALYSIS.tones[g]}
+            scenarios={ANALYSIS.scenarios[g]}
           />
         ))}
       </div>
@@ -182,6 +201,12 @@ export function App() {
 
       <div className="section-title">Knockout Bracket</div>
       <Bracket views={bracketViews} />
+
+      {DevFeedback && (
+        <Suspense fallback={null}>
+          <DevFeedback />
+        </Suspense>
+      )}
     </div>
   )
 }

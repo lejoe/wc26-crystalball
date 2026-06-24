@@ -1,9 +1,9 @@
 import { MATCHES } from './data/bracket'
 import { FIXTURES } from './data/fixtures'
-import { GROUP_LETTERS, GROUPS } from './data/groups'
+import { GROUPS } from './data/groups'
 import { effectiveH2H } from './h2h'
 import { scenarioPositions } from './scenarios'
-import { decidedOutcome, gdOf, groupStandings, pointsOf, rankGroup, rankThirdPlace } from './standings'
+import { decidedOutcome, gdOf, groupStandings, pointsOf, rankGroup } from './standings'
 import type { GroupLetter, SlotSource, StatusTone, TeamStanding } from './types'
 
 const NO_PRED = {} as Record<string, never>
@@ -71,15 +71,6 @@ export type BracketSlotFacts = {
   opponentSlot: SlotSource
 }
 
-export type ThirdPlaceFacts = {
-  group: GroupLetter
-  team: string
-  points: number
-  goalDifference: number
-  goalsFor: number
-  rank: number
-}
-
 export type GroupFacts = {
   group: GroupLetter
   /** Fingerprint of the real results this analysis is derived from. */
@@ -87,12 +78,6 @@ export type GroupFacts = {
   teams: TeamFacts[]
   /** Bracket destination of the group winner (1) and runner-up (2). */
   bracketSlots: { 1: BracketSlotFacts | null; 2: BracketSlotFacts | null }
-}
-
-export type AnalysisFacts = {
-  groups: GroupFacts[]
-  /** Cross-group best-3rd-place table over real results (lean input). */
-  thirdPlaceTable: ThirdPlaceFacts[]
 }
 
 /**
@@ -115,7 +100,7 @@ function setH2H(h2h: Map<string, number>, home: string, away: string, o: SimOutc
   h2h.set(away + '|' + home, o === 'A' ? 3 : o === 'D' ? 1 : 0)
 }
 
-type Scenario = {
+export type Scenario = {
   /** Remaining match outcomes, keyed by fixture index. */
   outcomes: Record<number, SimOutcome>
   positions: Map<string, Set<number>>
@@ -123,7 +108,7 @@ type Scenario = {
 
 /** Enumerate every outcome of the group's remaining matches, recording each team's
  *  reachable position range (points + H2H only) per scenario. */
-function enumerate(group: GroupLetter, standings: TeamStanding[]): { remaining: number[]; scenarios: Scenario[] } {
+export function enumerate(group: GroupLetter, standings: TeamStanding[]): { remaining: number[]; scenarios: Scenario[] } {
   const teams = GROUPS[group]
   const basePts = new Map(standings.map((s) => [s.team, pointsOf(s)]))
   const fixtures = FIXTURES[group].map((f, i) => ({ f, i, o: decidedOutcome(group, i, NO_PRED, NO_PRED) }))
@@ -276,27 +261,5 @@ export function groupAnalysisFacts(group: GroupLetter): GroupFacts {
     fingerprint: groupFingerprint(group),
     teams: teams.sort((a, b) => a.position - b.position),
     bracketSlots: bracketSlots(group),
-  }
-}
-
-function thirdPlaceTable(): ThirdPlaceFacts[] {
-  const groups = {} as Record<GroupLetter, TeamStanding[]>
-  for (const g of GROUP_LETTERS) groups[g] = groupStandings(g, NO_PRED, NO_PRED)
-  const h2h = effectiveH2H(NO_PRED, NO_PRED)
-  return rankThirdPlace(groups, h2h).map((r) => ({
-    group: r.group,
-    team: r.standing.team,
-    points: pointsOf(r.standing),
-    goalDifference: gdOf(r.standing),
-    goalsFor: r.standing.goalsFor,
-    rank: r.rank,
-  }))
-}
-
-/** Facts for every ready group plus the shared cross-group 3rd-place table. */
-export function allGroupAnalysisFacts(): AnalysisFacts {
-  return {
-    groups: GROUP_LETTERS.filter(analysisReady).map(groupAnalysisFacts),
-    thirdPlaceTable: thirdPlaceTable(),
   }
 }

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { flagOf } from '../data/groups'
 import { gdOf, pointsOf, type RankedRow } from '../standings'
+import { AnalysisModal } from './AnalysisModal'
 import { MatchesPanel } from './MatchesPanel'
-import { TeamAnalysisHover } from './TeamAnalysis'
-import type { GroupAnalysis, GroupLetter, StatusTone } from '../types'
+import { TeamAnalysisTrigger } from './TeamAnalysis'
+import type { GroupLetter, StatusTone } from '../types'
+import type { Node } from '../scenarioTree'
 
 type Props = {
   group: GroupLetter
@@ -12,17 +14,20 @@ type Props = {
   needsScores: boolean
   /** Per-row (aligned to `rows`): is this team's final position locked in? */
   decided: boolean[]
-  /** AI-composed situation analysis, present only when the group is in the ready window. */
-  analysis?: GroupAnalysis
+  /** Per-team status tone for the interactive modal (ready groups only). */
+  tones?: Map<string, StatusTone>
+  /** Per-team interactive scenario tree, opened in the modal (ready groups only). */
+  scenarios?: Record<string, Node>
 }
 
-export function GroupTable({ group, rows, complete, needsScores, decided, analysis }: Props) {
+export function GroupTable({ group, rows, complete, needsScores, decided, tones, scenarios }: Props) {
   const [showMatches, setShowMatches] = useState(false)
-  // The team whose analysis card is pinned open (tap on touch); one at a time.
-  const [pinnedTeam, setPinnedTeam] = useState<string | null>(null)
+  // The team whose interactive analysis modal is open.
+  const [modalTeam, setModalTeam] = useState<string | null>(null)
 
-  // Per-team status tone for the ready-window situation analysis, if available.
-  const toneByTeam = analysis ? new Map(analysis.overview.map((o) => [o.team, o.tone])) : null
+  // Interactive modal: a team has a trigger when it has both a tone and a tree.
+  const modalTone = (team: string): StatusTone | null =>
+    scenarios?.[team] ? tones?.get(team) ?? null : null
 
   // Teams whose goal difference must be pinned down with an exact score.
   const scoreTeams = complete
@@ -82,16 +87,14 @@ export function GroupTable({ group, rows, complete, needsScores, decided, analys
                 <td className="team-col">
                   <div className="team-cell">
                     <span className="flag">{flagOf(s.team)}</span>
-                    {toneByTeam?.has(s.team) ? (
-                      <TeamAnalysisHover
+                    {modalTone(s.team) ? (
+                      <TeamAnalysisTrigger
                         team={s.team}
-                        tone={toneByTeam.get(s.team) as StatusTone}
-                        blocks={analysis!.teams[s.team] ?? []}
-                        pinned={pinnedTeam === s.team}
-                        onTogglePin={() => setPinnedTeam((p) => (p === s.team ? null : s.team))}
+                        tone={modalTone(s.team) as StatusTone}
+                        onOpen={() => setModalTeam(s.team)}
                       >
                         <span className="name" title={s.team}>{s.team}</span>
-                      </TeamAnalysisHover>
+                      </TeamAnalysisTrigger>
                     ) : (
                       <span className="name" title={s.team}>{s.team}</span>
                     )}
@@ -119,6 +122,15 @@ export function GroupTable({ group, rows, complete, needsScores, decided, analys
       </table>
 
       {showMatches && <MatchesPanel group={group} scoreTeams={scoreTeams} />}
+
+      {modalTeam && scenarios?.[modalTeam] && (
+        <AnalysisModal
+          team={modalTeam}
+          tone={modalTone(modalTeam) as StatusTone}
+          root={scenarios[modalTeam]}
+          onClose={() => setModalTeam(null)}
+        />
+      )}
     </div>
   )
 }
