@@ -547,8 +547,19 @@ td.editable.locked { color: var(--text); cursor: default; }
 .match-final .slot { font-size: 15px; padding: 11px; }
 
 .third-play-off {
-  flex: 0 0 auto;
-  width: 260px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 50%;
+  margin-bottom: 64px;
+  text-align: center;
+}
+.third-play-off .col-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
 }
 
 /* ---------- Modal ---------- */

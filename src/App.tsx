@@ -8,7 +8,7 @@ import { useStore } from './store'
 import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
-import { Bracket, ThirdPlacePlayoff } from './components/Bracket'
+import { Bracket } from './components/Bracket'
 import type { GroupLetter, TeamStanding } from './types'
 
 const UPDATE_UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -178,7 +178,6 @@ export function App() {
       <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
       <div className="third-section">
         <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
-        <ThirdPlacePlayoff views={bracketViews} />
       </div>
 
       <div className="section-title">Knockout Bracket</div>

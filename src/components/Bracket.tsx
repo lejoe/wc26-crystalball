@@ -200,6 +200,7 @@ export function Bracket({ views }: Props) {
               </div>
             </div>
           </div>
+          <ThirdPlacePlayoff views={views} />
         </div>
 
         <div className="bhalf bhalf-right">
