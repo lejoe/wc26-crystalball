@@ -27,28 +27,37 @@ Nothing lands on `main` unattended.
 > 1. `git fetch origin`
 > 2. `git worktree add WT -b BR origin/main` — a fresh worktree on a new branch off
 >    the latest `origin/main` (a worktree can't check out `main`; this avoids it).
-> 3. `cd WT` (the worktree starts without `node_modules`).
-> 4. `npm ci`
+> 3. Borrow the primary checkout's already-installed deps instead of reinstalling —
+>    symlink them in (one command, no `npm ci`, no network, no lockfile mismatch):
+>    `ln -s /Users/lejoe/Projects/lejoe/lejoe-agent/wc2026-prediction/node_modules WT/node_modules`
+> 4. `cd WT` — the Bash working directory persists across the steps below. Run each
+>    command **exactly as written**: do NOT wrap in `bash -c '… && …'`, `npm
+>    --prefix`, or any `&&`/`;` chain. Wrapped/compound commands can't be saved as
+>    "always allow" and re-prompt every run.
 > 5. Run the `update-results` skill. It scans `src/data/fixtures.ts` and
 >    `src/data/bracketResults.ts` for unscored matches dated today-or-earlier,
 >    reads scores from the ESPN scoreboard API (`site.api.espn.com`, Wikipedia
 >    fallback), writes only matches ESPN marks `status.type.completed === true`
 >    (group rows by date+teams; knockout by matchId with slot a/b orientation,
 >    asserting feeding groups are really complete), fuzzy-flags drifted team names,
->    gates on `npx tsc --noEmit`, and emits a summary.
+>    and gates on `npx tsc --noEmit` (which runs in WT via the cwd from step 4 —
+>    plain command, no wrapper).
 > 6. If the skill reports nothing to update, or tsc fails: do **not** open a PR.
 >    Run `cd -` (back to the primary repo), then `git worktree remove --force WT`,
 >    then `git branch -D BR` (each its own command). Notify the reason and stop.
-> 7. Otherwise, each command on its own:
->    - `git add -A`
->    - `git commit -m "Results update YYYY-MM-DD HH:MM"`
->    - `git push -u origin BR`
->    - `gh pr create` with title `Results update YYYY-MM-DD HH:MM` and body: the
->      run summary, then a **Fuzzy matches — confirm before merge** section listing
->      every `fetched → canonical` mapping, then the diff overview.
+> 7. Otherwise, each its own command (use `git -C WT` so they never depend on cwd):
+>    - `git -C WT add -A`
+>    - `git -C WT commit -m "Results update YYYY-MM-DD HH:MM"`
+>    - `git -C WT push -u origin BR`
+>    - `gh pr create -R lejoe/wc26-crystalball --base main --head BR` with title
+>      `Results update YYYY-MM-DD HH:MM` and body (via `--body-file`): the run
+>      summary, then a **Fuzzy matches — confirm before merge** section listing
+>      every `fetched → canonical` mapping, then the diff overview. One command — no
+>      `;` preamble.
 > 8. Tear down (each its own command): `cd -` (back to the primary repo),
 >    `git worktree remove --force WT`, `git branch -D BR` (the branch lives on
->    `origin` via the PR). Notify with the PR link and the summary.
+>    `origin` via the PR). Remove any temp PR-body file you created. Notify with the
+>    PR link and the summary.
 >
 > Never merge to `main`. Never clear or migrate browser predictions. Never change
 > bracket pick semantics or grade a prediction. The human reviews, confirms any
