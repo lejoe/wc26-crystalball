@@ -446,6 +446,16 @@ td.editable.locked { color: var(--text); cursor: default; }
 .bcol-center .bcol-matches { flex: 1 1 auto; }
 .bcol-center .bcell { flex: 1 1 0; width: 100%; }
 .final-label { color: var(--accent); font-weight: 700; }
+.final-block { width: 100%; }
+.final-block > .match { width: 100%; }
+.final-match-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  margin-bottom: 6px;
+  text-align: center;
+}
 .champion-box {
   position: absolute;
   left: 0;

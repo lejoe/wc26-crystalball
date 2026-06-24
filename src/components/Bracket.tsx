@@ -143,7 +143,7 @@ function BracketColumn({ col, side, views }: { col: Col; side: 'left' | 'right';
 export function ThirdPlacePlayoff({ views }: Props) {
   return (
     <div className="third-play-off">
-      <div className="col-label">Third-place play-off</div>
+      <div className="col-label">Third-place</div>
       <MatchCard matchView={views[103]} popSide="right" />
     </div>
   )
@@ -167,7 +167,10 @@ export function Bracket({ views }: Props) {
           <div className="col-label final-label">Final</div>
           <div className="bcol-matches">
             <div className="bcell">
-              <MatchCard matchView={views[104]} final popSide="right" />
+              <div className="final-block">
+                <div className="col-label final-match-label">Final</div>
+                <MatchCard matchView={views[104]} final popSide="right" />
+              </div>
             </div>
             <div className="champion-box">
               <div className="champion-label">Champion</div>
