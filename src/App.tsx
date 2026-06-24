@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { GROUP_LETTERS } from './data/groups'
-import { rankGroup, rankThirdPlace, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, predictedCount, nextMatchDate } from './standings'
+import { rankGroup, groupStandings, groupComplete, incompleteGoalsTeams, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
@@ -87,40 +87,59 @@ export function App() {
     return out
   }, [groupRanks, predictions, predScores])
 
-  const thirdRanked = useMemo(() => rankThirdPlace(groups, h2h), [groups, h2h])
-
-  // Teams that could be a group's third-placed team. More than one when the
-  // 2nd/3rd order is a tie whose decider (goal difference) isn't pinned down.
-  const thirdContenders = useMemo(() => {
-    const m = {} as Record<GroupLetter, string[]>
+  // One row per group for the best-third panel. Everything visible (which groups
+  // are settled, the candidates, their stats) follows the user's predictions; only
+  // the unsettled "min" floor is prediction-independent (real results only).
+  const thirdRows = useMemo<ThirdGroupRow[]>(() => {
+    const rows: ThirdGroupRow[] = []
     for (const g of GROUP_LETTERS) {
+      if (groups[g].every((s) => s.played === 0)) continue // no data yet — omit
       const ranked = groupRanks[g]
       const pos3 = ranked.find((r) => r.position === 3)
-      if (!pos3) {
-        m[g] = []
-      } else if (pos3.needsScores || pos3.unresolved) {
-        const p = pointsOf(pos3.standing)
-        m[g] = ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
-      } else {
-        m[g] = [pos3.standing.team]
-      }
-    }
-    return m
-  }, [groupRanks])
+      if (!pos3) continue
 
-  const thirdSettled = useMemo(() => {
-    const m = {} as Record<GroupLetter, boolean>
-    for (const g of GROUP_LETTERS) {
-      if (groups[g].every((s) => s.played === 0)) {
-        m[g] = false
-      } else if (complete[g]) {
-        m[g] = (thirdContenders[g]?.length ?? 0) <= 1
+      // Teams that could still be this group's 3rd, predictions included.
+      let candidateTeams: string[]
+      if (complete[g]) {
+        if (pos3.needsScores || pos3.unresolved) {
+          const p = pointsOf(pos3.standing)
+          candidateTeams = ranked.filter((r) => pointsOf(r.standing) === p).map((r) => r.standing.team)
+        } else {
+          candidateTeams = [pos3.standing.team]
+        }
       } else {
-        m[g] = (possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []).length === 1
+        candidateTeams = possibleGroupPositions(g, predictions, predScores).candidates.get(3) ?? []
+      }
+
+      if (candidateTeams.length <= 1) {
+        const team = candidateTeams[0] ?? pos3.standing.team
+        const standing = ranked.find((r) => r.standing.team === team)!.standing
+        rows.push({ group: g, settled: true, rank: 0, sortPts: pointsOf(standing), thirdStanding: standing })
+      } else {
+        const candidates = candidateTeams.map((team) => {
+          const rr = ranked.find((r) => r.standing.team === team)!
+          return { standing: rr.standing, position: rr.position }
+        })
+        const minPoints = minThirdPlacePoints(g)
+        rows.push({ group: g, settled: false, rank: 0, sortPts: minPoints, minPoints, candidates })
       }
     }
-    return m
-  }, [groups, complete, thirdContenders, predictions, predScores])
+
+    rows.sort((a, b) => {
+      if (a.sortPts !== b.sortPts) return b.sortPts - a.sortPts
+      // At equal points a confirmed 3rd ranks above a group whose floor is only that.
+      if (a.settled !== b.settled) return a.settled ? -1 : 1
+      if (a.settled && b.settled) {
+        const ga = gdOf(a.thirdStanding!)
+        const gb = gdOf(b.thirdStanding!)
+        if (ga !== gb) return gb - ga
+        if (a.thirdStanding!.goalsFor !== b.thirdStanding!.goalsFor)
+          return b.thirdStanding!.goalsFor - a.thirdStanding!.goalsFor
+      }
+      return a.group.localeCompare(b.group)
+    })
+    return rows.map((r, i) => ({ ...r, rank: i + 1 }))
+  }, [groups, groupRanks, complete, predictions, predScores])
 
   const bracketViews = useMemo(
     () => resolveBracket(state),
@@ -177,7 +196,7 @@ export function App() {
 
       <div className="section-title">Best Third-Placed Teams (advisory ranking)</div>
       <div className="third-section">
-        <ThirdPlacePanel rows={thirdRanked} settled={thirdSettled} contenders={thirdContenders} />
+        <ThirdPlacePanel rows={thirdRows} />
       </div>
 
       <div className="section-title">Knockout Bracket</div>

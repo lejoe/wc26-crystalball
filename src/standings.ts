@@ -328,3 +328,68 @@ export function rankThirdPlace(
 
   return thirds.map((t, i) => ({ ...t, rank: i + 1 }))
 }
+
+/**
+ * The fewest points the team finishing 3rd can end on, given each team's base
+ * points and the still-open matches. In any fully-decided scenario the 3rd-place
+ * points value is simply the 3rd-highest of the four totals, so head-to-head and
+ * goal difference never enter into it — only points and which matches remain.
+ *
+ * `openPairs` are [homeIndex, awayIndex] into `basePts` for each open match.
+ */
+export function minThirdFromBase(basePts: number[], openPairs: [number, number][]): number {
+  const thirdHighest = (pts: number[]) => [...pts].sort((a, b) => b - a)[2]
+  const k = openPairs.length
+  if (k === 0) return thirdHighest(basePts)
+  let min = Infinity
+  const total = 3 ** k
+  for (let mask = 0; mask < total; mask++) {
+    const pts = basePts.slice()
+    let mm = mask
+    for (const [home, away] of openPairs) {
+      const o = mm % 3
+      mm = (mm / 3) | 0
+      if (o === 0) pts[home] += 3
+      else if (o === 1) {
+        pts[home] += 1
+        pts[away] += 1
+      } else pts[away] += 3
+    }
+    const third = thirdHighest(pts)
+    if (third < min) min = third
+  }
+  return min
+}
+
+/**
+ * The guaranteed minimum points a group's eventual 3rd-placed team will finish
+ * with. Deliberately ignores predictions: it works from REAL results only and
+ * treats every unplayed match as still open, so it is the true floor for that
+ * group's 3rd place regardless of how the user has predicted the rest.
+ */
+export function minThirdPlacePoints(group: GroupLetter): number {
+  const standings = groupStandings(group, {}) // empty predictions → real results only
+  const basePts = standings.map(pointsOf)
+  const idx = new Map(GROUPS[group].map((t, i) => [t, i]))
+  const openPairs: [number, number][] = []
+  for (const f of FIXTURES[group]) {
+    if (f.hs === null || f.as === null) openPairs.push([idx.get(f.home)!, idx.get(f.away)!])
+  }
+  return minThirdFromBase(basePts, openPairs)
+}
+
+/**
+ * One row per group for the best-third panel. Settled groups carry the decided
+ * 3rd-place `thirdStanding`; unsettled groups carry `minPoints` (the real-only
+ * floor) plus the `candidates` still able to finish 3rd with their current
+ * group position.
+ */
+export type ThirdGroupRow = {
+  group: GroupLetter
+  settled: boolean
+  rank: number // 1-based across all listed groups
+  sortPts: number // settled: 3rd's points; unsettled: minPoints
+  thirdStanding?: TeamStanding
+  minPoints?: number
+  candidates?: { standing: TeamStanding; position: number }[]
+}

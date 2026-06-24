@@ -283,34 +283,67 @@ td.editable.locked { color: var(--text); cursor: default; }
   align-items: flex-start;
   flex-wrap: wrap;
 }
-.third-panel { flex: 1 1 480px; max-width: 640px; }
-.third-note { color: var(--muted); font-size: 11px; margin-top: 8px; }
-.cand-sep { color: var(--muted); }
-.provisional { color: var(--muted); }
-.prov-mark {
-  color: var(--warn);
-  font-weight: 700;
-  margin-left: 4px;
-  cursor: help;
-}
-.third-table {
-  width: 100%;
+/* The panel reuses table.standings (same cell height / font as the group
+   tables); the chrome that table.standings lacks lives on the wrapper. */
+.third-panel {
+  flex: 1 1 480px;
   max-width: 640px;
-  border-collapse: collapse;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
 }
-.third-table th, .third-table td {
-  padding: 6px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--line);
+
+/* Group letter prefix on a settled (single-team) row. */
+.third-grp {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  min-width: 14px;
+}
+
+/* Unsettled group: a header line (no bottom border so it joins its candidates)
+   carrying only the floor; "min" sits left of the points so the number aligns
+   under the Pts column. */
+table.standings tr.third-group-head td { border-bottom: none; }
+table.standings td.min-label {
+  text-align: right;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* Candidate rows nested under an unsettled group: indented, position-prefixed. */
+table.standings tr.third-candidate td.team-col { padding-left: 22px; }
+.cand-pos {
+  display: inline-block;
+  min-width: 12px;
+  text-align: center;
+  color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.third-table th { font-size: 10px; text-transform: uppercase; color: var(--muted); }
-.third-table td.num, .third-table th.num { text-align: center; }
-.third-advancing { background: color-mix(in srgb, var(--advance) 40%, transparent); }
+
+/* "Top 8 advance" cut band. */
+table.standings tr.cut-row td { padding: 0; border-bottom: none; }
+.cut-line {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 7px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--advance-bd);
+}
+.cut-line::before, .cut-line::after {
+  content: '';
+  flex: 1;
+  border-top: 1px dashed var(--advance-bd);
+  opacity: 0.65;
+}
 
 /* ---------- Bracket ---------- */
 .bracket-scroll {
