@@ -114,7 +114,6 @@ function MatchCard({ matchView, final, popSide }: { matchView: MatchView; final?
   const def = MATCH_BY_ID[matchView.def.id]
   return (
     <div className={`match ${final ? 'match-final' : ''}`}>
-      <div className="match-id">Match {def.id}</div>
       <Slot view={matchView.a} matchId={def.id} side="a" matchView={matchView} popSide={popSide} />
       <Slot view={matchView.b} matchId={def.id} side="b" matchView={matchView} popSide={popSide} />
     </div>

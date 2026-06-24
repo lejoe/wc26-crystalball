@@ -509,7 +509,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 }
 @container bracket (max-width: 760px) {
   .bracket2 .slot { font-size: 11px; padding: 5px 6px; }
-  .bracket2 .match-id { font-size: 8px; }
   .bracket2 { --cw: 10px; }
 }
 /* Mobile: stack the two halves (and the Final) vertically. */
@@ -578,7 +577,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .half-right .slot { flex-direction: row-reverse; }
 .half-right .slot-team { text-align: right; }
 .half-right .slot-unknown { flex-direction: row-reverse; }
-.half-right .match-id { text-align: right; }
 
 /* Centre Final column. */
 .bcol-center { position: relative; }
@@ -621,7 +619,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   border-radius: 8px;
 }
 .match .slot:last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
-.match .match-id { font-size: 9px; color: var(--muted); padding: 2px 8px 0; }
 .slot {
   position: relative;
   display: flex;
