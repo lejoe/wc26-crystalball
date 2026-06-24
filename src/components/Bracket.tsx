@@ -1,6 +1,5 @@
 import * as HoverCard from '@radix-ui/react-hover-card'
-import { abbrOf, flagOf, groupOf } from '../data/groups'
-import type { GroupLetter } from '../types'
+import { abbrOf, flagOf, groupCandidatesByGroup } from '../data/groups'
 import { MATCH_BY_ID } from '../data/bracket'
 import { BRACKET_RESULTS } from '../data/bracketResults'
 import type { MatchView, SlotView } from '../bracketResolve'
@@ -81,15 +80,7 @@ function Slot({
   if (!hasCands) return box
 
   // Group the candidate teams by their group for a readable popover.
-  const byGroup = new Map<GroupLetter, string[]>()
-  for (const t of view.candidates) {
-    const g = groupOf(t)
-    if (!g) continue
-    const arr = byGroup.get(g)
-    if (arr) arr.push(t)
-    else byGroup.set(g, [t])
-  }
-  const grouped = [...byGroup.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+  const grouped = groupCandidatesByGroup(view.candidates)
 
   return (
     <HoverCard.Root openDelay={60} closeDelay={150}>
@@ -103,7 +94,7 @@ function Slot({
           collisionPadding={8}
         >
           <div className="cand-pop-title">Possible teams</div>
-          {grouped.map(([g, teams]) => (
+          {grouped.map(({ g, teams }) => (
             <div className="cand-pop-group" key={g}>
               <div className="cand-pop-glabel">Group {g}</div>
               {teams.map((t) => (
@@ -152,7 +143,7 @@ function BracketColumn({ col, side, views }: { col: Col; side: 'left' | 'right';
 export function ThirdPlacePlayoff({ views }: Props) {
   return (
     <div className="third-play-off">
-      <div className="col-label">Third-place play-off</div>
+      <div className="col-label">Third-place</div>
       <MatchCard matchView={views[103]} popSide="right" />
     </div>
   )
@@ -173,9 +164,11 @@ export function Bracket({ views }: Props) {
         </div>
 
         <div className="bcol bcol-center">
-          <div className="col-label final-label">Final</div>
-          <div className="bcol-matches">
-            <div className="bcell">
+          <div className="col-label final-label" aria-hidden="true">{' '}</div>
+          <div className="final-stack">
+            <ThirdPlacePlayoff views={views} />
+            <div className="final-block">
+              <div className="col-label final-match-label">Final</div>
               <MatchCard matchView={views[104]} final popSide="right" />
             </div>
             <div className="champion-box">
@@ -200,7 +193,6 @@ export function Bracket({ views }: Props) {
               </div>
             </div>
           </div>
-          <ThirdPlacePlayoff views={views} />
         </div>
 
         <div className="bhalf bhalf-right">

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { flagOf } from '../data/groups'
 import { gdOf, pointsOf, type RankedRow } from '../standings'
+import { AnalysisModal } from './AnalysisModal'
 import { MatchesPanel } from './MatchesPanel'
-import type { GroupLetter } from '../types'
+import type { GroupLetter, StatusTone } from '../types'
 import type { QualStatus } from '../scenarios'
+import type { Node } from '../scenarioTree'
 
 type Props = {
   group: GroupLetter
@@ -16,6 +18,10 @@ type Props = {
   nextDate: string | null
   /** Per-row (aligned to `rows`): Through / In the balance / Out outlook. */
   qual: QualStatus[]
+  /** Per-team status tone for the interactive modal (ready groups only). */
+  tones?: Map<string, StatusTone>
+  /** Per-team interactive scenario tree, opened in the modal (ready groups only). */
+  scenarios?: Record<string, Node>
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -41,8 +47,14 @@ function relativeMatchDate(iso: string): { text: string; isToday: boolean } {
   return { text: shortDate(iso), isToday: false }
 }
 
-export function GroupTable({ group, rows, complete, needsScores, predicted, nextDate, qual }: Props) {
+export function GroupTable({ group, rows, complete, needsScores, predicted, nextDate, qual, tones, scenarios }: Props) {
   const [showMatches, setShowMatches] = useState(false)
+  // The team whose interactive analysis modal is open.
+  const [modalTeam, setModalTeam] = useState<string | null>(null)
+
+  // Interactive modal: a team has a trigger when it has both a tone and a tree.
+  const modalTone = (team: string): StatusTone | null =>
+    scenarios?.[team] ? tones?.get(team) ?? null : null
 
   // Teams whose goal difference must be pinned down with an exact score.
   const scoreTeams = complete
@@ -83,8 +95,28 @@ export function GroupTable({ group, rows, complete, needsScores, predicted, next
             const gd = gdOf(s)
             // Only flag a tie once the group is finished and an exact score is needed.
             const flag = complete && r.needsScores
+            // Rows with a tone + tree open the situation-analysis modal on click.
+            const tone = modalTone(s.team)
+            const open = tone ? () => setModalTeam(s.team) : undefined
             return (
-              <tr key={s.team} className={`q-${status}`}>
+              <tr
+                key={s.team}
+                className={`q-${status}${tone ? ' row-analyzable' : ''}`}
+                role={tone ? 'button' : undefined}
+                tabIndex={tone ? 0 : undefined}
+                aria-label={tone ? `${s.team} — open situation analysis` : undefined}
+                onClick={open}
+                onKeyDown={
+                  open
+                    ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          open()
+                        }
+                      }
+                    : undefined
+                }
+              >
                 <td className="qcol" aria-hidden="true"></td>
                 <td className="team-col">
                   <div className="team-cell">
@@ -133,6 +165,15 @@ export function GroupTable({ group, rows, complete, needsScores, predicted, next
       </div>
 
       {showMatches && <MatchesPanel group={group} scoreTeams={scoreTeams} />}
+
+      {modalTeam && scenarios?.[modalTeam] && (
+        <AnalysisModal
+          team={modalTeam}
+          tone={modalTone(modalTeam) as StatusTone}
+          root={scenarios[modalTeam]}
+          onClose={() => setModalTeam(null)}
+        />
+      )}
     </div>
   )
 }
