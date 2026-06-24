@@ -118,6 +118,31 @@ export function incompleteGoalsTeams(
   return out
 }
 
+/** How many of a group's matches the user has predicted (no real result yet). */
+export function predictedCount(
+  group: GroupLetter,
+  predictions: Record<string, Outcome>,
+  predScores: Record<string, PredScore> = NO_SCORES,
+): number {
+  let n = 0
+  FIXTURES[group].forEach((f, i) => {
+    if (f.hs !== null && f.as !== null) return // real result, not a prediction
+    const key = resultKey(group, i)
+    if (predictions[key] || predScores[key]) n++
+  })
+  return n
+}
+
+/** ISO date (YYYY-MM-DD) of the group's next not-yet-played match, or null. */
+export function nextMatchDate(group: GroupLetter): string | null {
+  let best: string | null = null
+  for (const f of FIXTURES[group]) {
+    if (f.hs !== null && f.as !== null) continue // already played
+    if (best === null || f.date < best) best = f.date
+  }
+  return best
+}
+
 export type RankedRow = {
   standing: TeamStanding
   position: number // 1-based
