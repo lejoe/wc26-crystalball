@@ -58,4 +58,44 @@ describe('scenarioPositions (points + head-to-head only)', () => {
     const pos = scenarioPositions(['A', 'B', 'C', 'D'], ptsMap({ A: 1, B: 1, C: 1, D: 1 }), new Map())
     for (const t of ['A', 'B', 'C', 'D']) expect(setOf(pos, t)).toEqual([1, 2, 3, 4])
   })
+
+  it('breaks a points + drawn-H2H tie by goal difference when goals are final', () => {
+    // A and B level on 4 with a drawn head-to-head; only GD separates them.
+    // With final goals supplied, A (+5) is locked 2nd and B (-1) is locked 3rd.
+    const pos = scenarioPositions(
+      ['L', 'A', 'B', 'D'],
+      ptsMap({ L: 7, A: 4, B: 4, D: 1 }),
+      h2hMap([
+        ['A', 'B', 1],
+        ['B', 'A', 1],
+      ]),
+      new Map([
+        ['L', { gd: 4, gf: 7 }],
+        ['A', { gd: 5, gf: 8 }],
+        ['B', { gd: -1, gf: 5 }],
+        ['D', { gd: -8, gf: 2 }],
+      ]),
+    )
+    expect(setOf(pos, 'L')).toEqual([1])
+    expect(setOf(pos, 'A')).toEqual([2])
+    expect(setOf(pos, 'B')).toEqual([3])
+    expect(setOf(pos, 'D')).toEqual([4])
+  })
+
+  it('falls back to goals-for when goal difference is also level', () => {
+    const pos = scenarioPositions(
+      ['A', 'B'],
+      ptsMap({ A: 3, B: 3 }),
+      h2hMap([
+        ['A', 'B', 1],
+        ['B', 'A', 1],
+      ]),
+      new Map([
+        ['A', { gd: 2, gf: 4 }],
+        ['B', { gd: 2, gf: 2 }],
+      ]),
+    )
+    expect(setOf(pos, 'A')).toEqual([1])
+    expect(setOf(pos, 'B')).toEqual([2])
+  })
 })

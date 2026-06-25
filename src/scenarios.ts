@@ -1,6 +1,6 @@
 import { FIXTURES } from './data/fixtures'
 import { GROUPS } from './data/groups'
-import { decidedOutcome, groupStandings, pointsOf } from './standings'
+import { decidedOutcome, groupStandings, knownScore, pointsOf } from './standings'
 import type { GroupLetter, Outcome, PredScore } from './types'
 
 type SimOutcome = 'H' | 'D' | 'A'
@@ -12,10 +12,12 @@ export type GroupPositions = {
 
 /**
  * Enumerate every outcome (H/D/A) of a group's undecided matches and collect,
- * for each team, the set of final positions it can still reach. Tiebreaking
- * inside a scenario uses points then head-to-head points; ties that would fall
- * to goal difference stay ambiguous, so a position is only reported as a single
- * candidate when it is genuinely locked in.
+ * for each team, the set of final positions it can still reach. While matches
+ * remain, tiebreaking inside a scenario uses points then head-to-head points;
+ * ties that would fall to goal difference stay ambiguous, since simulated
+ * outcomes carry no scores. Once the group is fully played with known scores,
+ * goal difference is final and positions are split by the full cascade, so each
+ * team resolves to its single real position.
  */
 export function possibleGroupPositions(
   group: GroupLetter,
@@ -29,6 +31,17 @@ export function possibleGroupPositions(
   const fixtures = FIXTURES[group].map((f, i) => ({ f, o: decidedOutcome(group, i, predictions, predScores) }))
   const decided = fixtures.filter((x) => x.o)
   const remaining = fixtures.filter((x) => !x.o)
+
+  // When the group is fully decided AND every match has a known score, goal
+  // difference is final, so positions can be split by the full tiebreak cascade
+  // rather than left ambiguous at the points + head-to-head stage. Outcome-only
+  // predictions carry no goals, so GD stays unknown and we skip this.
+  const allScored =
+    remaining.length === 0 &&
+    FIXTURES[group].every((_, i) => knownScore(group, i, predScores) !== undefined)
+  const goals = allScored
+    ? new Map(standings.map((s) => [s.team, { gd: s.goalsFor - s.goalsAgainst, gf: s.goalsFor }]))
+    : undefined
 
   const reachable = new Map<string, Set<number>>()
   teams.forEach((t) => reachable.set(t, new Set<number>()))
@@ -57,7 +70,7 @@ export function possibleGroupPositions(
         pts.set(f.away, (pts.get(f.away) ?? 0) + 1)
       }
     }
-    addPositions(teams, pts, h2h, reachable)
+    addPositions(teams, pts, h2h, reachable, goals)
   }
 
   const order = [...teams].sort((a, b) => (basePts.get(b)! - basePts.get(a)!))
@@ -115,47 +128,66 @@ export function qualificationStatus(
   return out
 }
 
+/** Final goal difference and goals-for for a fully-decided group. */
+export type GoalStat = { gd: number; gf: number }
+
 /**
  * The 1-based position range each team occupies in a single fully-decided
- * scenario, tiebreaking by points then head-to-head points only. Teams that a
- * lower tiebreaker (goal difference) would separate keep a shared range, so the
- * result reflects exactly what points + H2H can certify.
+ * scenario, tiebreaking by points then head-to-head points. When `goals` is
+ * supplied — only safe once every match has a known score, so goal difference
+ * is final — ties that head-to-head leaves are further split by overall goal
+ * difference then goals-for. Without it, teams a lower tiebreaker would separate
+ * keep a shared range, reflecting exactly what points + H2H can certify.
  */
 export function scenarioPositions(
   teams: string[],
   pts: Map<string, number>,
   h2h: Map<string, number>,
+  goals?: Map<string, GoalStat>,
 ): Map<string, Set<number>> {
   const out = new Map<string, Set<number>>()
   teams.forEach((t) => out.set(t, new Set<number>()))
-  const sorted = [...teams].sort((a, b) => pts.get(b)! - pts.get(a)!)
-  let i = 0
-  let pos = 1
-  while (i < sorted.length) {
-    let j = i
-    while (j < sorted.length && pts.get(sorted[j]) === pts.get(sorted[i])) j++
-    const block = sorted.slice(i, j)
 
-    const sub = new Map<string, number>()
-    for (const x of block) {
-      let s = 0
-      for (const y of block) if (x !== y) s += h2h.get(x + '|' + y) ?? 0
-      sub.set(x, s)
-    }
-    const bs = [...block].sort((a, b) => sub.get(b)! - sub.get(a)!)
-    let k = 0
-    let sp = pos
-    while (k < bs.length) {
-      let l = k
-      while (l < bs.length && sub.get(bs[l]) === sub.get(bs[k])) l++
-      const tie = bs.slice(k, l)
-      for (const t of tie) for (let p = sp; p < sp + tie.length; p++) out.get(t)!.add(p)
-      sp += tie.length
-      k = l
-    }
-    pos += block.length
-    i = j
+  // Assign every team in `block` the shared range [start, start + len - 1].
+  const flat = (block: string[], start: number) => {
+    for (const t of block) for (let p = start; p < start + block.length; p++) out.get(t)!.add(p)
   }
+
+  // Split `block` into runs of equal `score` (higher is better), recursing into
+  // `next` for teams that remain tied. `score` may read the block (head-to-head
+  // mini-tables are relative to the points-tied cluster).
+  const split = (
+    block: string[],
+    start: number,
+    score: (t: string, peers: string[]) => number,
+    next: (sub: string[], s: number) => void,
+  ) => {
+    const ranked = [...block].sort((a, b) => score(b, block) - score(a, block))
+    let i = 0
+    let pos = start
+    while (i < ranked.length) {
+      let j = i
+      while (j < ranked.length && score(ranked[j], block) === score(ranked[i], block)) j++
+      next(ranked.slice(i, j), pos)
+      pos += j - i
+      i = j
+    }
+  }
+
+  const h2hScore = (t: string, peers: string[]) => {
+    let s = 0
+    for (const y of peers) if (y !== t) s += h2h.get(t + '|' + y) ?? 0
+    return s
+  }
+
+  // After points → H2H, optionally break remaining ties by GD then GF.
+  const byGoals = (sub: string[], s: number) =>
+    goals
+      ? split(sub, s, (t) => goals.get(t)!.gd, (g, gs) =>
+          split(g, gs, (t) => goals.get(t)!.gf, flat))
+      : flat(sub, s)
+
+  split(teams, 1, (t) => pts.get(t)!, (block, s) => split(block, s, h2hScore, byGoals))
   return out
 }
 
@@ -164,8 +196,9 @@ function addPositions(
   pts: Map<string, number>,
   h2h: Map<string, number>,
   reachable: Map<string, Set<number>>,
+  goals?: Map<string, GoalStat>,
 ): void {
-  for (const [t, set] of scenarioPositions(teams, pts, h2h)) {
+  for (const [t, set] of scenarioPositions(teams, pts, h2h, goals)) {
     for (const p of set) reachable.get(t)!.add(p)
   }
 }
