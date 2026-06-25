@@ -61,8 +61,8 @@ export const FIXTURES: Record<GroupLetter, Fixture[]> = {
     F('2026-06-14', "Côte d'Ivoire", 'Ecuador', 1, 0),
     F('2026-06-20', 'Germany', "Côte d'Ivoire", 2, 1),
     F('2026-06-20', 'Ecuador', 'Curaçao', 0, 0),
-    F('2026-06-25', 'Curaçao', "Côte d'Ivoire"),
-    F('2026-06-25', 'Ecuador', 'Germany'),
+    F('2026-06-25', 'Curaçao', "Côte d'Ivoire", 0, 2),
+    F('2026-06-25', 'Ecuador', 'Germany', 2, 1),
   ],
   F: [
     F('2026-06-14', 'Netherlands', 'Japan', 2, 2),
