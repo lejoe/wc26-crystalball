@@ -35,6 +35,13 @@ const GOLDS: [string, string][] = [
   ['#b8860b', '#f7d979'], // goldenrod
 ]
 const FRICTION = 0.993
+const COUNT = 1000 // flakes per burst
+const FALL_SPEED = 0.5 // global slow-motion factor on gravity, fall, flutter, spin
+
+// Mouse influence: a moving cursor parts the flakes like a hand through feathers.
+const MOUSE_RADIUS = 200 // reach around the cursor (px)
+const MOUSE_PUSH = 0.04 // overall displacement strength
+const MOUSE_VELO = 0.02 // how much hand speed amplifies impact (fast swipes fling harder)
 
 export function ChampionConfetti({ originRef, champion }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -42,6 +49,10 @@ export function ChampionConfetti({ originRef, champion }: Props) {
   const rafRef = useRef<number>(0)
   const pageRef = useRef({ w: 0, h: 0 })
   const prevRef = useRef<string | null>(champion)
+  // Pointer position in document coordinates; null until the mouse first moves.
+  const pointerRef = useRef<{ x: number; y: number } | null>(null)
+  // Pointer position from the previous frame, to derive its velocity.
+  const pointerPrevRef = useRef<{ x: number; y: number } | null>(null)
 
   useEffect(() => {
     // Only fire on a change to a new, non-empty champion (skip the initial mount).
@@ -53,6 +64,22 @@ export function ChampionConfetti({ originRef, champion }: Props) {
   }, [champion])
 
   useEffect(() => () => cancelAnimationFrame(rafRef.current), [])
+
+  // Track the pointer so a moving hand can stir the flakes.
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      pointerRef.current = { x: e.clientX + window.scrollX, y: e.clientY + window.scrollY }
+    }
+    function onLeave() {
+      pointerRef.current = null
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerleave', onLeave)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerleave', onLeave)
+    }
+  }, [])
 
   // Size the canvas to the whole document so flakes fall all the way down the page.
   function sizeCanvas(canvas: HTMLCanvasElement) {
@@ -81,8 +108,7 @@ export function ChampionConfetti({ originRef, champion }: Props) {
     const ox = r.left + r.width / 2 + window.scrollX
     const oy = r.top + r.height / 2 + window.scrollY
 
-    const count = 300
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < COUNT; i++) {
       const angle = Math.random() * Math.PI * 2
       const speed = 3 + Math.random() * 10 // gentle launch; the low drag (FRICTION) carries flakes almost to the page sides
       const [base, hi] = GOLDS[(Math.random() * GOLDS.length) | 0]
@@ -119,14 +145,44 @@ export function ChampionConfetti({ originRef, champion }: Props) {
     const { w, h } = pageRef.current
     ctx.clearRect(0, 0, w, h)
 
+    // Pointer velocity this frame (px/frame); zero when the hand is still.
+    const pointer = pointerRef.current
+    const prev = pointerPrevRef.current
+    let pvx = 0
+    let pvy = 0
+    if (pointer && prev) {
+      pvx = pointer.x - prev.x
+      pvy = pointer.y - prev.y
+    }
+    const handSpeed = Math.hypot(pvx, pvy)
+    pointerPrevRef.current = pointer ? { x: pointer.x, y: pointer.y } : null
+
     const live: Particle[] = []
     for (const p of particlesRef.current) {
       p.vx *= FRICTION
-      p.vy = p.vy * 0.999 + p.gravity
-      p.flutter += p.flutterSpeed
-      p.x += p.vx + Math.sin(p.flutter) * p.sway // side-to-side flutter
-      p.y += p.vy
-      p.rot += p.vrot
+      p.vy = p.vy * 0.999 + p.gravity * FALL_SPEED
+      // A moving hand parts the flakes: it sweeps them along its path and shoves
+      // them aside, swirling them like feathers. A still hand does nothing, and a
+      // fast swipe flings them harder than a slow drift.
+      if (pointer && handSpeed > 0.01) {
+        const ax = p.x - pointer.x // outward (away from cursor)
+        const ay = p.y - pointer.y
+        const dist = Math.hypot(ax, ay)
+        if (dist > 1 && dist < MOUSE_RADIUS) {
+          const falloff = 1 - dist / MOUSE_RADIUS
+          const gain = handSpeed * MOUSE_VELO * MOUSE_PUSH * falloff
+          // carried along in the hand's wake...
+          p.vx += pvx * gain
+          p.vy += pvy * gain
+          // ...and nudged aside so they part around it
+          p.vx += (ax / dist) * handSpeed * gain * 0.5
+          p.vy += (ay / dist) * handSpeed * gain * 0.5
+        }
+      }
+      p.flutter += p.flutterSpeed * FALL_SPEED
+      p.x += (p.vx + Math.sin(p.flutter) * p.sway) * FALL_SPEED // side-to-side flutter
+      p.y += p.vy * FALL_SPEED
+      p.rot += p.vrot * FALL_SPEED
       // Keep every flake until it has fallen off the bottom of the page — no fading.
       if (p.y - p.len > h) continue
       live.push(p)
