@@ -408,15 +408,45 @@ td.editable.locked { color: var(--text); cursor: default; }
   align-items: flex-start;
   flex-wrap: wrap;
 }
+/* Settled groups (left) and groups still to decide (right) split into two
+   columns; each wraps below the other once they no longer fit side by side. */
+.third-split {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.third-col {
+  flex: 1 1 360px;
+  min-width: 0;
+  max-width: 560px;
+}
+.third-col-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+
 /* The panel reuses table.standings (same cell height / font as the group
    tables); the chrome that table.standings lacks lives on the wrapper. */
 .third-panel {
-  flex: 1 1 480px;
-  max-width: 640px;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   overflow: hidden;
+}
+
+/* Open advancing spot: a top-8 place not yet locked by a settled third. Keeps
+   the green qualification rail but reads as a muted, italic placeholder. */
+table.standings tr.third-slot-open td.derived,
+table.standings tr.third-slot-open td.pts {
+  color: var(--muted);
+}
+.slot-open {
+  color: var(--muted);
+  font-style: italic;
 }
 
 /* Group letter prefix on a settled (single-team) row. */
