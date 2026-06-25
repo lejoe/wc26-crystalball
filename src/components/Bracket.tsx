@@ -5,7 +5,7 @@ import { BRACKET_RESULTS } from '../data/bracketResults'
 import type { MatchView, SlotView } from '../bracketResolve'
 import { useStore } from '../store'
 import type { Side } from '../types'
-import { useRef } from 'react'
+import { useRef, type Ref } from 'react'
 import { ChampionConfetti } from './ChampionConfetti'
 
 type PopSide = 'left' | 'right'
@@ -140,6 +140,68 @@ function BracketColumn({ col, side, views }: { col: Col; side: 'left' | 'right';
   )
 }
 
+function PodiumSpot({
+  rank,
+  matchView,
+  side,
+  locked,
+  innerRef,
+}: {
+  rank: 1 | 2 | 3
+  matchView?: MatchView
+  side: Side | null
+  locked: boolean
+  innerRef?: Ref<HTMLDivElement>
+}) {
+  const slot = side ? (side === 'a' ? matchView?.a : matchView?.b) : null
+  const team = slot?.team ?? null
+  const decided = side != null // this placement's match has a chosen winner
+  const unknown = decided && !team // winner picked along a path but team not yet known
+  const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'
+  const entryCls = team ? (slot?.confirmed ? 'entry-real' : 'entry-pred') : ''
+  const resultCls = decided ? (locked ? 'winner-real' : 'winner-pred') : ''
+
+  return (
+    <div className={`podium-spot podium-${rank}`}>
+      <div ref={innerRef} className={`podium-team ${entryCls} ${resultCls}`}>
+        {team ? (
+          <>
+            <span className="flag">{flagOf(team)}</span>
+            <span className="slot-team" title={team}>{abbrOf(team)}</span>
+          </>
+        ) : unknown ? (
+          <span className="slot-label">?</span>
+        ) : (
+          <span className="slot-label">TBD</span>
+        )}
+      </div>
+      <div className="podium-step">
+        <span className="podium-medal">{medal}</span>
+      </div>
+    </div>
+  )
+}
+
+function Podium({ views, championRef }: { views: Record<number, MatchView>; championRef: Ref<HTMLDivElement> }) {
+  const final = views[104]
+  const third = views[103]
+  const champSide = final?.winnerSide ?? null
+  const runnerSide: Side | null = champSide ? (champSide === 'a' ? 'b' : 'a') : null
+  const thirdSide = third?.winnerSide ?? null
+  const finalLocked = 104 in BRACKET_RESULTS
+  const thirdLocked = 103 in BRACKET_RESULTS
+
+  return (
+    <div className="podium-box">
+      <div className="podium">
+        <PodiumSpot rank={2} matchView={final} side={runnerSide} locked={finalLocked} />
+        <PodiumSpot rank={1} matchView={final} side={champSide} locked={finalLocked} innerRef={championRef} />
+        <PodiumSpot rank={3} matchView={third} side={thirdSide} locked={thirdLocked} />
+      </div>
+    </div>
+  )
+}
+
 export function ThirdPlacePlayoff({ views }: Props) {
   return (
     <div className="third-play-off">
@@ -153,7 +215,6 @@ export function Bracket({ views }: Props) {
   const final = views[104]
   const champSlot = final?.winnerSide === 'a' ? final.a : final?.winnerSide === 'b' ? final.b : null
   const champion = champSlot?.team ?? null
-  const champUnknown = !!final?.winnerSide && !champion
   const championRef = useRef<HTMLDivElement>(null)
   return (
     <div className="bracket-scroll">
@@ -173,28 +234,7 @@ export function Bracket({ views }: Props) {
               <div className="col-label final-match-label">Final</div>
               <MatchCard matchView={views[104]} final popSide="right" />
             </div>
-            <div className="champion-box">
-              <div className="champion-label">Champion</div>
-              <div className="match match-final">
-                <div
-                  ref={championRef}
-                  className={`slot winner ${final?.winnerSide ? (104 in BRACKET_RESULTS ? 'winner-real' : 'winner-pred') : ''} ${champion ? (champSlot?.confirmed ? 'entry-real' : 'entry-pred') : ''}`}
-                  style={{ justifyContent: 'center' }}
-                >
-                  {champion ? (
-                    <>
-                      <span className="flag">{flagOf(champion)}</span>
-                      <span className="slot-team" style={{ flex: 'unset' }} title={champion}>{abbrOf(champion)}</span>
-                      🏆
-                    </>
-                  ) : champUnknown ? (
-                    <span className="slot-label">? 🏆</span>
-                  ) : (
-                    <span className="slot-label">TBD</span>
-                  )}
-                </div>
-              </div>
-            </div>
+            <Podium views={views} championRef={championRef} />
           </div>
         </div>
 

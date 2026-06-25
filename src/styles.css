@@ -532,7 +532,6 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   .bracket2 { flex-direction: column; gap: 20px; }
   .bhalf, .bcol-center { flex: 0 0 auto; width: 100%; }
   .bcol-center { order: 3; }
-  .champion-box { position: static; margin-top: 12px; }
   .bcol-center .bcol-matches { display: block; }
 }
 
@@ -624,16 +623,80 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   margin-bottom: 6px;
   text-align: center;
 }
-.champion-box {
-  width: 100%;
+.podium-box {
+  /* Wider than the narrow centre column; the centred flex parent lets it
+     overflow symmetrically so it stays centred on the page. Sized in
+     container units so the footprint scales with the bracket and never
+     collides with the inner columns. */
+  width: clamp(150px, 25cqw, 300px);
   text-align: center;
+  margin-top: 36px; /* sit a bit lower in the centre column on desktop */
 }
-.champion-label {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--warn);
-  margin-bottom: 4px;
+.podium {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px;
+}
+.podium-spot {
+  flex: 1 1 0;
+  max-width: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.podium-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 5px 9px;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.podium-team .flag { font-size: 26px; }
+.podium-team .slot-team { flex: unset; }
+.podium-team .slot-label { color: var(--muted); font-weight: 600; }
+/* Real vs predicted result, mirroring the bracket connectors. */
+.podium-team.entry-real { color: var(--advance-bd); }
+.podium-team.entry-pred { color: var(--text); }
+.podium-step {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 12px;
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: var(--panel-2);
+}
+.podium-1 .podium-step {
+  height: 96px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--warn) 26%, var(--panel-2)), var(--panel-2));
+  border-color: color-mix(in srgb, var(--warn) 45%, var(--line));
+}
+.podium-2 .podium-step { height: 64px; }
+.podium-3 .podium-step { height: 42px; }
+.podium-medal { font-size: 28px; line-height: 1; }
+.podium-1 .podium-medal { font-size: 36px; }
+
+/* Mobile: the bracket stacks vertically, so the podium gets the full column
+   width and steps back to compact sizes. Placed after the base rules so it
+   wins on source order. */
+@container bracket (max-width: 620px) {
+  .podium-box { position: static; margin-top: 12px; width: 100%; max-width: 320px; }
+  .podium-spot { max-width: 100px; }
+  .podium-team { font-size: 12px; }
+  .podium-team .flag { font-size: 20px; }
+  .podium-1 .podium-step { height: 70px; }
+  .podium-2 .podium-step { height: 48px; }
+  .podium-3 .podium-step { height: 32px; }
+  .podium-medal { font-size: 22px; }
+  .podium-1 .podium-medal { font-size: 28px; }
 }
 
 .match {
