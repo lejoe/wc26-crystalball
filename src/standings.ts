@@ -101,6 +101,11 @@ export function groupComplete(
   return FIXTURES[group].every((_, i) => decidedOutcome(group, i, predictions, predScores) !== undefined)
 }
 
+/** Whether every match in the group has a real result (no predictions involved). */
+export function groupRealComplete(group: GroupLetter): boolean {
+  return FIXTURES[group].every((f) => f.hs !== null && f.as !== null)
+}
+
 /** Whether a team's scoreless predicted matches include a draw, a decisive result, or both. */
 export type IncompleteKinds = { draw: boolean; decisive: boolean }
 /** Per-team map of incomplete goal data from outcome-only (scoreless) predicted matches. */
