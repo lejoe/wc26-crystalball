@@ -34,7 +34,7 @@ const GOLDS: [string, string][] = [
   ['#d9ab26', '#fff4cf'], // bright champagne gold
   ['#b8860b', '#f7d979'], // goldenrod
 ]
-const FRICTION = 0.985
+const FRICTION = 0.993
 
 export function ChampionConfetti({ originRef, champion }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -84,7 +84,7 @@ export function ChampionConfetti({ originRef, champion }: Props) {
     const count = 300
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2
-      const speed = 4 + Math.random() * 11 // burst reach, between the tight and wide versions
+      const speed = 3 + Math.random() * 10 // gentle launch; the low drag (FRICTION) carries flakes almost to the page sides
       const [base, hi] = GOLDS[(Math.random() * GOLDS.length) | 0]
       // Per-particle gravity: light flakes drift and hang, heavy ones drop fast.
       const heavy = Math.random()
@@ -92,16 +92,16 @@ export function ChampionConfetti({ originRef, champion }: Props) {
         x: ox,
         y: oy,
         vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed - 2.5, // upward bias: bursts up, then rains down
-        gravity: 0.18 + heavy * 0.37,
+        vy: Math.sin(angle) * speed - 2, // upward bias: bursts up, then rains down
+        gravity: 0.06 + heavy * 0.16, // lighter pull so flakes hang and drift slowly
         rot: Math.random() * Math.PI,
-        vrot: (Math.random() - 0.5) * 0.22,
-        len: 7 + Math.random() * 9,
-        thick: 2 + Math.random() * 2.5,
+        vrot: (Math.random() - 0.5) * 0.13,
+        len: 9 + Math.random() * 11,
+        thick: 2.5 + Math.random() * 3,
         base,
         hi,
         flutter: Math.random() * Math.PI * 2,
-        flutterSpeed: 0.12 + Math.random() * 0.18,
+        flutterSpeed: 0.06 + Math.random() * 0.1,
         sway: (1 - heavy) * (0.6 + Math.random() * 1.4), // lighter flakes sway more
       })
     }
