@@ -11,6 +11,8 @@ type Props = {
   group: GroupLetter
   rows: RankedRow[]
   complete: boolean
+  /** True when every match has a real result (not just predictions). */
+  realComplete: boolean
   needsScores: boolean
   /** How many of the group's matches the user has predicted. */
   predicted: number
@@ -47,7 +49,7 @@ function relativeMatchDate(iso: string): { text: string; isToday: boolean } {
   return { text: shortDate(iso), isToday: false }
 }
 
-export function GroupTable({ group, rows, complete, needsScores, predicted, nextDate, qual, tones, scenarios }: Props) {
+export function GroupTable({ group, rows, complete, realComplete, needsScores, predicted, nextDate, qual, tones, scenarios }: Props) {
   const [showMatches, setShowMatches] = useState(false)
   // The team whose interactive analysis modal is open.
   const [modalTeam, setModalTeam] = useState<string | null>(null)
@@ -63,7 +65,7 @@ export function GroupTable({ group, rows, complete, needsScores, predicted, next
   const next = nextDate ? relativeMatchDate(nextDate) : null
 
   return (
-    <div className={`group-card ${complete ? 'finalized' : ''}`}>
+    <div className={`group-card ${complete ? 'finalized' : ''} ${complete && !realComplete ? 'predicted-final' : ''}`}>
       <div className="gc-head">
         <span className="gc-title">
           Group <b>{group}</b>

@@ -218,15 +218,17 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
         const adv = advancing(views[src.match])
         // Confirmed only if a real result decided the feeder AND its team is itself locked.
         const real = realWinner[src.match] === true
+        // Carry the feeder's own label so an advanced-but-unresolved entry
+        // (e.g. "1st I") shows the same source label here, not a bare "?".
         return adv
-          ? { team: adv.team, certain: !!adv.team, confirmed: real && adv.confirmed, candidates: adv.candidates, label: slotLabel(src) }
+          ? { team: adv.team, certain: !!adv.team, confirmed: real && adv.confirmed, candidates: adv.candidates, label: adv.label }
           : { team: null, certain: false, confirmed: false, candidates: [], label: slotLabel(src) }
       }
       case 'loser': {
         const los = losing(views[src.match])
         const real = realWinner[src.match] === true
         return los
-          ? { team: los.team, certain: !!los.team, confirmed: real && los.confirmed, candidates: los.candidates, label: slotLabel(src) }
+          ? { team: los.team, certain: !!los.team, confirmed: real && los.confirmed, candidates: los.candidates, label: los.label }
           : { team: null, certain: false, confirmed: false, candidates: [], label: slotLabel(src) }
       }
     }

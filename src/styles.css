@@ -242,6 +242,8 @@ button {
   color: var(--muted);
 }
 .group-card.finalized { border-color: var(--advance-bd); }
+/* Finalized only by predictions (no real results yet) → dotted green border. */
+.group-card.predicted-final { border-style: dotted; }
 .group-card.finalized .gc-head { background: color-mix(in srgb, var(--advance) 32%, var(--panel-2)); }
 .group-card.finalized .gc-status { color: var(--advance-bd); font-weight: 700; }
 
@@ -592,6 +594,13 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .half-right .slot-team { text-align: right; }
 .half-right .slot-unknown { flex-direction: row-reverse; }
 
+/* Light up a match's outgoing connector green once a side has advanced;
+   dotted when the advance is a prediction, solid for a real result. */
+.bhalf .bcell:has(.slot.winner)::after { border-top-color: var(--advance-bd); }
+.bhalf .bcell:has(.slot.winner)::before { border-left-color: var(--advance-bd); }
+.bhalf .bcell:has(.slot.winner-pred)::after { border-top-style: dotted; }
+.bhalf .bcell:has(.slot.winner-pred)::before { border-left-style: dotted; }
+
 /* Centre Final column. */
 .bcol-center { position: relative; }
 .final-label { color: var(--accent); font-weight: 700; }
@@ -648,13 +657,33 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .slot:last-child { border-bottom: none; }
 .slot.clickable { cursor: pointer; }
 .slot.clickable:hover { background: var(--panel-2); }
+/* Advancing entry: no box border — the advancing side is shown by the green
+   outgoing connector (solid for a real result, dotted for a prediction). */
 .slot.winner { font-weight: 600; }
-/* Entry source as a subtle fill: green = team locked by real results, orange =
-   prediction-based. The advancing side reads as a stronger shade of the same hue. */
-.slot.entry-real { background: color-mix(in srgb, var(--advance) 30%, transparent); }
-.slot.entry-pred { background: color-mix(in srgb, var(--third) 30%, transparent); }
-.slot.winner.entry-real { background: color-mix(in srgb, var(--advance) 55%, transparent); }
-.slot.winner.entry-pred { background: color-mix(in srgb, var(--third) 55%, transparent); }
+/* Entry source as a left bar, matching the standings qcol prefix: green = team
+   locked by real results, orange = prediction-based. */
+.slot.entry-real::before,
+.slot.entry-pred::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+}
+.slot.entry-real::before { background: var(--advance-bd); }
+.slot.entry-pred::before { background: var(--third-bd); }
+.match .slot:first-child.entry-real::before,
+.match .slot:first-child.entry-pred::before { border-top-left-radius: 7px; }
+.match .slot:last-child.entry-real::before,
+.match .slot:last-child.entry-pred::before { border-bottom-left-radius: 7px; }
+/* Right half is mirrored, so the source bar sits on the right edge. */
+.half-right .slot.entry-real::before,
+.half-right .slot.entry-pred::before { left: auto; right: 0; }
+.half-right .match .slot:first-child.entry-real::before,
+.half-right .match .slot:first-child.entry-pred::before { border-top-left-radius: 0; border-top-right-radius: 7px; }
+.half-right .match .slot:last-child.entry-real::before,
+.half-right .match .slot:last-child.entry-pred::before { border-bottom-left-radius: 0; border-bottom-right-radius: 7px; }
 .slot.eliminated { opacity: 0.4; }
 .slot .flag { font-size: 14px; }
 .slot .slot-team { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

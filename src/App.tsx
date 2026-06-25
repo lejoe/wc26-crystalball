@@ -1,6 +1,6 @@
 import { lazy, Suspense, useMemo, useState } from 'react'
 import { GROUPS, GROUP_LETTERS } from './data/groups'
-import { rankGroup, groupStandings, groupComplete, incompleteGoalsTeams, thirdPlaceContenders, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
+import { rankGroup, groupStandings, groupComplete, groupRealComplete, incompleteGoalsTeams, thirdPlaceContenders, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
@@ -92,6 +92,14 @@ export function App() {
     for (const g of GROUP_LETTERS) out[g] = groupComplete(g, predictions, predScores)
     return out
   }, [predictions, predScores])
+
+  // Groups complete by real results alone — used to tell a results-finalized
+  // group (solid) from one finalized only by predictions (dotted).
+  const realComplete = useMemo(() => {
+    const out = {} as Record<GroupLetter, boolean>
+    for (const g of GROUP_LETTERS) out[g] = groupRealComplete(g)
+    return out
+  }, [])
 
   // Groups where the order is decided by goal difference that isn't pinned down
   // yet — the user should predict exact scores for a match.
@@ -211,6 +219,7 @@ export function App() {
             group={g}
             rows={groupRanks[g]}
             complete={complete[g]}
+            realComplete={realComplete[g]}
             needsScores={needsScores[g]}
             predicted={predicted[g]}
             nextDate={nextDates[g]}

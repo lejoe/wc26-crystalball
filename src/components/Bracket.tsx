@@ -50,7 +50,8 @@ function Slot({
   const hasCands = !view.team && view.candidates.length > 0
   const locked = matchId in BRACKET_RESULTS // real result decided this match
 
-  const winnerCls = isWinner ? 'winner' : ''
+  // Advancing: real knockout result → solid; user prediction → dotted.
+  const winnerCls = isWinner ? (locked ? 'winner winner-real' : 'winner winner-pred') : ''
   // Mark a filled entry: green when real results lock the team, orange when it's prediction-based.
   const entryCls = view.team ? (view.confirmed ? 'entry-real' : 'entry-pred') : ''
 
@@ -67,13 +68,11 @@ function Slot({
         <>
           <span className="flag">{flagOf(view.team)}</span>
           <span className="slot-team">{abbrOf(view.team)}</span>
-          {isWinner && <span className="slot-label">✓</span>}
         </>
       ) : (
         <div className="slot-unknown">
           <span className="slot-label">{view.label}</span>
           {hasCands && <span className="q-badge">?</span>}
-          {isWinner && <span className="slot-label">✓</span>}
         </div>
       )}
     </div>
@@ -179,7 +178,7 @@ export function Bracket({ views }: Props) {
               <div className="match match-final">
                 <div
                   ref={championRef}
-                  className={`slot winner ${champion ? (champSlot?.confirmed ? 'entry-real' : 'entry-pred') : ''}`}
+                  className={`slot winner ${final?.winnerSide ? (104 in BRACKET_RESULTS ? 'winner-real' : 'winner-pred') : ''} ${champion ? (champSlot?.confirmed ? 'entry-real' : 'entry-pred') : ''}`}
                   style={{ justifyContent: 'center' }}
                 >
                   {champion ? (
