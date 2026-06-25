@@ -5,6 +5,8 @@ import { BRACKET_RESULTS } from '../data/bracketResults'
 import type { MatchView, SlotView } from '../bracketResolve'
 import { useStore } from '../store'
 import type { Side } from '../types'
+import { useRef } from 'react'
+import { ChampionConfetti } from './ChampionConfetti'
 
 type PopSide = 'left' | 'right'
 
@@ -153,9 +155,11 @@ export function Bracket({ views }: Props) {
   const champSlot = final?.winnerSide === 'a' ? final.a : final?.winnerSide === 'b' ? final.b : null
   const champion = champSlot?.team ?? null
   const champUnknown = !!final?.winnerSide && !champion
+  const championRef = useRef<HTMLDivElement>(null)
   return (
     <div className="bracket-scroll">
       <div className="bracket2">
+        <ChampionConfetti originRef={championRef} champion={champion} />
         <div className="bhalf bhalf-left">
           {LEFT.map((col) => (
             <BracketColumn key={`L-${col.round}`} col={col} side="left" views={views} />
@@ -174,6 +178,7 @@ export function Bracket({ views }: Props) {
               <div className="champion-label">Champion</div>
               <div className="match match-final">
                 <div
+                  ref={championRef}
                   className={`slot winner ${champion ? (champSlot?.confirmed ? 'entry-real' : 'entry-pred') : ''}`}
                   style={{ justifyContent: 'center' }}
                 >
