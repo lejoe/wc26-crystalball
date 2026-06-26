@@ -287,7 +287,8 @@ button {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
 }
-.match-row .fx-date .fx-time { color: var(--text); font-weight: 600; }
+.match-row .fx-date .fx-time { font-weight: 600; }
+.match-row .fx-date.is-today .fx-time { color: var(--text); }
 .match-row .fx-date.is-today .fx-day { color: var(--text); font-weight: 700; }
 .match-row .fx-date.status-over .fx-state { font-weight: 700; letter-spacing: 0.03em; }
 .match-row .fx-date.status-live .fx-state {

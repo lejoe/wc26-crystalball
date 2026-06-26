@@ -66,7 +66,7 @@ export function formatKickoff(kickoff: string, hasResult: boolean, now: Date): K
   const tomorrowStr = localDay(new Date(now.getTime() + 86_400_000))
 
   const dateText = day === todayStr ? 'Today' : day === tomorrowStr ? 'Tomorrow' : dateFmt.format(d)
-  const time = timeFmt.format(d)
+  const time = compactTime(d)
   return { status, text: `${dateText} · ${time}`, dateText, time, isToday: day === todayStr }
 }
 
