@@ -1066,3 +1066,81 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .an2-body { padding: 14px; }
 /* interactive scenario flow provides its own padding; allow it to scroll if tall */
 .an2-body--flow { padding: 0; max-height: min(68vh, 620px); overflow-y: auto; }
+
+/* Post-group board (finished team analysis). */
+.an2-modal--wide { max-width: 560px; }
+.fin-body { max-height: min(78vh, 720px); overflow-y: auto; }
+.fin-section + .fin-section { margin-top: 16px; }
+.fin-title {
+  margin: 0 0 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.fin-note { margin: 0; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+
+.fin-table { width: 100%; }
+.fin-table .fin-pos {
+  display: inline-block;
+  min-width: 14px;
+  margin-right: 2px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.fin-table tr.fin-focus td:not(.qcol) { background: var(--panel-2); }
+.fin-table tr.fin-focus .name { font-weight: 700; }
+
+/* Compact single-path mini-bracket: the team's match + the next round(s). */
+.mini-bracket {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  overflow-x: auto;
+}
+.mb-col {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-width: 0;
+}
+.mb-arrow {
+  position: absolute;
+  left: -8px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-size: 12px;
+}
+.mb-round {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+  text-align: center;
+  white-space: nowrap;
+}
+.mb-date { font-size: 10px; color: var(--muted); text-align: center; margin-bottom: 5px; }
+.mb-match {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--panel);
+}
+.mb-slot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 8px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line);
+  min-height: 34px;
+}
+.mb-slot:last-child { border-bottom: none; }
+.mb-slot .slot-team { font-weight: 600; }
+.mb-slot .slot-label { color: var(--muted); font-weight: 600; }
+.mb-won { font-weight: 700; }
+.mb-lost { opacity: 0.5; }
+.mb-focus { background: var(--panel-2); box-shadow: inset 3px 0 0 var(--accent); }
