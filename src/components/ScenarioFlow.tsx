@@ -281,7 +281,6 @@ const SCENARIO_CSS = `
   .scn .fixture .side{display:inline-flex; align-items:center; gap:6px;}
   .scn .fixture .flag{font-size:15px;}
   .scn .fixture .dash{color:var(--txt3); font-weight:600;}
-  .scn .fixture .side.fav .tn{color:var(--info);}
   .scn .root-badge{font-size:12.5px; line-height:1; cursor:help;}
   .scn .opts{display:flex; flex-direction:column; gap:6px;}
   .scn .opt{display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:10px 13px; border-radius:9px; background:var(--panel2); border:1px solid var(--line); color:var(--txt); font:inherit; cursor:pointer; transition:background .12s, border-color .12s, opacity .12s;}
