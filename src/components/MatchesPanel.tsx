@@ -3,21 +3,21 @@ import { abbrOf, flagOf } from '../data/groups'
 import { FIXTURES, resultKey, type Fixture } from '../data/fixtures'
 import { useStore } from '../store'
 import type { GroupLetter, Outcome } from '../types'
-import { formatKickoff, useNow } from '../utils/datetime'
+import { kickoffParts, useNow } from '../utils/datetime'
 
 function FxDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: boolean; now: Date }) {
-  const d = formatKickoff(kickoff, hasResult, now)
+  const d = kickoffParts(kickoff, hasResult, now)
   return (
     <span className={`fx-date status-${d.status} ${d.isToday ? 'is-today' : ''}`}>
       {d.status === 'upcoming' ? (
         <>
-          <span className="fx-day">{d.dateText}</span>
+          <span className="fx-day">{d.dateOnly}</span>
           <span className="fx-time">{d.time}</span>
         </>
       ) : (
         <span className="fx-state">
           {d.status === 'live' && <span className="live-dot" aria-hidden="true" />}
-          {d.text}
+          {d.stateText}
         </span>
       )}
     </span>
