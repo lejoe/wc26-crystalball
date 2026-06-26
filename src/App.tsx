@@ -14,6 +14,7 @@ import { TeamSearch, type SearchTeam } from './components/TeamSearch'
 import { analysisReady, groupAnalysisFacts } from './groupAnalysis'
 import { buildGroupScenarios, type Node } from './scenarioTree'
 import type { GroupLetter, StatusTone, TeamStanding } from './types'
+import logoUrl from './assets/logo.svg'
 
 // Interactive situation analysis (per-team modal trees), built once from the
 // deterministic engine for the ready groups only. Independent of predictions.
@@ -192,7 +193,10 @@ export function App() {
     <div className="app">
       <header className="app-header">
         <div className="header-lede">
-          <h1>FIFA World Cup 2026 — Crystal Ball</h1>
+          <div className="header-title">
+            <img className="header-logo" src={logoUrl} alt="WC26 crystal ball trophy" />
+            <h1>FIFA World Cup 2026 — Crystal Ball</h1>
+          </div>
           <div className="sub">See where teams stand, open any team's full situation, and explore the scenarios still in play.</div>
         </div>
         <div className="header-side">
