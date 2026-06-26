@@ -55,8 +55,8 @@ export const FIXTURES: Record<GroupLetter, Fixture[]> = {
     F('2026-06-13T21:00:00-07:00', 'Australia', 'Türkiye', 2, 0),
     F('2026-06-19T12:00:00-07:00', 'United States', 'Australia', 2, 0),
     F('2026-06-19T20:00:00-07:00', 'Türkiye', 'Paraguay', 0, 1),
-    F('2026-06-25T19:00:00-07:00', 'Türkiye', 'United States'),
-    F('2026-06-25T19:00:00-07:00', 'Paraguay', 'Australia'),
+    F('2026-06-25T19:00:00-07:00', 'Türkiye', 'United States', 3, 2),
+    F('2026-06-25T19:00:00-07:00', 'Paraguay', 'Australia', 0, 0),
   ],
   E: [
     F('2026-06-14T12:00:00-05:00', 'Germany', 'Curaçao', 7, 1),
@@ -71,8 +71,8 @@ export const FIXTURES: Record<GroupLetter, Fixture[]> = {
     F('2026-06-14T20:00:00-06:00', 'Sweden', 'Tunisia', 5, 1),
     F('2026-06-20T12:00:00-05:00', 'Netherlands', 'Sweden', 5, 1),
     F('2026-06-20T22:00:00-06:00', 'Tunisia', 'Japan', 0, 4),
-    F('2026-06-25T18:00:00-05:00', 'Japan', 'Sweden'),
-    F('2026-06-25T18:00:00-05:00', 'Tunisia', 'Netherlands'),
+    F('2026-06-25T18:00:00-05:00', 'Japan', 'Sweden', 1, 1),
+    F('2026-06-25T18:00:00-05:00', 'Tunisia', 'Netherlands', 1, 3),
   ],
   G: [
     F('2026-06-15T12:00:00-07:00', 'Belgium', 'Egypt', 1, 1),
