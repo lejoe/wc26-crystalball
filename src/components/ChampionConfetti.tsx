@@ -35,8 +35,21 @@ const GOLDS: [string, string][] = [
   ['#b8860b', '#f7d979'], // goldenrod
 ]
 const FRICTION = 0.993
-const COUNT = 1000 // flakes per burst
+const COUNT = 1000 // flakes per burst on a full-width desktop screen
 const FALL_SPEED = 0.5 // global slow-motion factor on gravity, fall, flutter, spin
+
+// The full COUNT overwhelms phone GPUs (fill-rate) and the per-frame canvas loop,
+// so the burst stutters. Scale the flake count by viewport width — narrow screens
+// get proportionally fewer flakes, which keeps the animation smooth there while a
+// desktop still gets the full, dense burst.
+const FULL_WIDTH = 1280 // width at and above which the burst uses the full COUNT
+const MIN_FRACTION = 0.25 // floor so the smallest phones still get a visible burst
+
+function burstCount() {
+  const w = document.documentElement.clientWidth || window.innerWidth || FULL_WIDTH
+  const fraction = Math.min(1, Math.max(MIN_FRACTION, w / FULL_WIDTH))
+  return Math.round(COUNT * fraction)
+}
 
 // Mouse influence: a moving cursor parts the flakes like a hand through feathers.
 const MOUSE_RADIUS = 200 // reach around the cursor (px)
@@ -108,7 +121,8 @@ export function ChampionConfetti({ originRef, champion }: Props) {
     const ox = r.left + r.width / 2 + window.scrollX
     const oy = r.top + r.height / 2 + window.scrollY
 
-    for (let i = 0; i < COUNT; i++) {
+    const count = burstCount()
+    for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2
       const speed = 3 + Math.random() * 10 // gentle launch; the low drag (FRICTION) carries flakes almost to the page sides
       const [base, hi] = GOLDS[(Math.random() * GOLDS.length) | 0]
