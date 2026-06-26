@@ -10,8 +10,10 @@ import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
 import { Bracket } from './components/Bracket'
 import { AnalysisModal } from './components/AnalysisModal'
+import { FinishedAnalysisModal } from './components/FinishedAnalysisModal'
 import { TeamSearch, type SearchTeam } from './components/TeamSearch'
 import { analysisReady, groupAnalysisFacts } from './groupAnalysis'
+import { buildFinishedView } from './finishedAnalysis'
 import { buildGroupScenarios, type Node } from './scenarioTree'
 import type { GroupLetter, StatusTone, TeamStanding } from './types'
 
@@ -28,9 +30,14 @@ const ANALYSIS = (() => {
   return { tones, scenarios }
 })()
 
-// Every team, flagged with whether it has an open situation to analyse.
+// Every team, flagged with whether its board can be opened — either an open
+// situation to analyse (ready window) or a finished group's post-group board.
 const SEARCH_TEAMS: SearchTeam[] = GROUP_LETTERS.flatMap((g) =>
-  GROUPS[g].map((team) => ({ team, group: g, analyzable: !!ANALYSIS.scenarios[g]?.[team] })),
+  GROUPS[g].map((team) => ({
+    team,
+    group: g,
+    analyzable: !!ANALYSIS.scenarios[g]?.[team] || groupRealComplete(g),
+  })),
 )
 
 // Dev-only feedback/annotation widget. Lazy + DEV-gated so it is excluded from
@@ -188,6 +195,9 @@ export function App() {
     [predictions, predScores, state.bracketPredictions],
   )
 
+  // All twelve groups decided → the best-third race is settled.
+  const allGroupsComplete = useMemo(() => GROUP_LETTERS.every((g) => complete[g]), [complete])
+
   return (
     <div className="app">
       <header className="app-header">
@@ -226,6 +236,9 @@ export function App() {
             qual={qualStatus[g]}
             tones={ANALYSIS.tones[g]}
             scenarios={ANALYSIS.scenarios[g]}
+            bracketViews={bracketViews}
+            thirdRows={thirdRows}
+            allGroupsComplete={allGroupsComplete}
           />
         ))}
       </div>
@@ -272,13 +285,30 @@ export function App() {
         </time>
       </footer>
 
-      {searchTeam && searchRoot && (
-        <AnalysisModal
+      {searchTeam && searchGroup && realComplete[searchGroup] ? (
+        <FinishedAnalysisModal
           team={searchTeam}
-          tone={(searchTone ?? 'in-balance') as StatusTone}
-          root={searchRoot}
+          group={searchGroup}
+          finalRanking={groupRanks[searchGroup]}
+          view={buildFinishedView(
+            searchTeam,
+            groupRanks[searchGroup].find((r) => r.standing.team === searchTeam)?.position ?? 4,
+            bracketViews,
+            allGroupsComplete,
+          )}
+          thirdRows={thirdRows}
           onClose={() => setSearchTeam(null)}
         />
+      ) : (
+        searchTeam &&
+        searchRoot && (
+          <AnalysisModal
+            team={searchTeam}
+            tone={(searchTone ?? 'in-balance') as StatusTone}
+            root={searchRoot}
+            onClose={() => setSearchTeam(null)}
+          />
+        )
       )}
 
       {DevFeedback && (

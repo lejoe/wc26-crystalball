@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { flagOf } from '../data/groups'
-import { gdOf, pointsOf, type RankedRow } from '../standings'
+import { gdOf, pointsOf, type RankedRow, type ThirdGroupRow } from '../standings'
 import { AnalysisModal } from './AnalysisModal'
+import { FinishedAnalysisModal } from './FinishedAnalysisModal'
 import { MatchesPanel } from './MatchesPanel'
+import { buildFinishedView } from '../finishedAnalysis'
 import type { GroupLetter, StatusTone } from '../types'
 import type { QualStatus } from '../scenarios'
 import type { Node } from '../scenarioTree'
+import type { MatchView } from '../bracketResolve'
 import { formatKickoff, useNow } from '../utils/datetime'
 
 type Props = {
@@ -25,9 +28,15 @@ type Props = {
   tones?: Map<string, StatusTone>
   /** Per-team interactive scenario tree, opened in the modal (ready groups only). */
   scenarios?: Record<string, Node>
+  /** Resolved bracket, for the post-group board's stage-aware path (finished groups). */
+  bracketViews: Record<number, MatchView>
+  /** Best-third rows, for a finished 3rd-placed team still awaiting the race. */
+  thirdRows: ThirdGroupRow[]
+  /** True when all twelve groups are decided (settles the best-third race). */
+  allGroupsComplete: boolean
 }
 
-export function GroupTable({ group, rows, complete, realComplete, needsScores, predicted, nextDate, qual, tones, scenarios }: Props) {
+export function GroupTable({ group, rows, complete, realComplete, needsScores, predicted, nextDate, qual, tones, scenarios, bracketViews, thirdRows, allGroupsComplete }: Props) {
   const [showMatches, setShowMatches] = useState(false)
   const now = useNow()
   // The team whose interactive analysis modal is open.
@@ -36,6 +45,13 @@ export function GroupTable({ group, rows, complete, realComplete, needsScores, p
   // Interactive modal: a team has a trigger when it has both a tone and a tree.
   const modalTone = (team: string): StatusTone | null =>
     scenarios?.[team] ? tones?.get(team) ?? null : null
+
+  // Once the group is fully played, every row opens the post-group board.
+  const finished = realComplete
+  const finishedView = (team: string) => {
+    const pos = rows.find((r) => r.standing.team === team)?.position ?? 4
+    return buildFinishedView(team, pos, bracketViews, allGroupsComplete)
+  }
 
   // Teams whose goal difference must be pinned down with an exact score.
   const scoreTeams = complete
@@ -76,16 +92,18 @@ export function GroupTable({ group, rows, complete, realComplete, needsScores, p
             const gd = gdOf(s)
             // Only flag a tie once the group is finished and an exact score is needed.
             const flag = complete && r.needsScores
-            // Rows with a tone + tree open the situation-analysis modal on click.
+            // Rows open a modal: the scenario tree in the ready window, or the
+            // post-group board once the group is fully played.
             const tone = modalTone(s.team)
-            const open = tone ? () => setModalTeam(s.team) : undefined
+            const clickable = finished || !!tone
+            const open = clickable ? () => setModalTeam(s.team) : undefined
             return (
               <tr
                 key={s.team}
-                className={`q-${status}${tone ? ' row-analyzable' : ''}`}
-                role={tone ? 'button' : undefined}
-                tabIndex={tone ? 0 : undefined}
-                aria-label={tone ? `${s.team} — open situation analysis` : undefined}
+                className={`q-${status}${clickable ? ' row-analyzable' : ''}`}
+                role={clickable ? 'button' : undefined}
+                tabIndex={clickable ? 0 : undefined}
+                aria-label={clickable ? `${s.team} — open team analysis` : undefined}
                 onClick={open}
                 onKeyDown={
                   open
@@ -147,11 +165,22 @@ export function GroupTable({ group, rows, complete, realComplete, needsScores, p
 
       {showMatches && <MatchesPanel group={group} scoreTeams={scoreTeams} />}
 
-      {modalTeam && scenarios?.[modalTeam] && (
+      {modalTeam && !finished && scenarios?.[modalTeam] && (
         <AnalysisModal
           team={modalTeam}
           tone={modalTone(modalTeam) as StatusTone}
           root={scenarios[modalTeam]}
+          onClose={() => setModalTeam(null)}
+        />
+      )}
+
+      {modalTeam && finished && (
+        <FinishedAnalysisModal
+          team={modalTeam}
+          group={group}
+          finalRanking={rows}
+          view={finishedView(modalTeam)}
+          thirdRows={thirdRows}
           onClose={() => setModalTeam(null)}
         />
       )}
