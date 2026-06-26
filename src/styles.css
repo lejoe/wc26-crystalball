@@ -199,9 +199,30 @@ button {
   margin: 40px 0 8px;
   padding-top: 16px;
   border-top: 1px solid var(--line);
-  text-align: center;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px 20px;
 }
 .app-footer .last-update { cursor: help; }
+.footer-links {
+  display: flex;
+  gap: 18px;
+  font-size: 13px;
+}
+.footer-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  text-decoration: none;
+}
+.footer-links a:hover { color: var(--text); }
+.footer-links .gh-mark { flex-shrink: 0; }
+@media (max-width: 480px) {
+  .app-footer { justify-content: center; text-align: center; }
+}
 
 /* ---------- Groups grid ---------- */
 .groups-grid {
