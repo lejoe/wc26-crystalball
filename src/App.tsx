@@ -1,10 +1,11 @@
-import { lazy, Suspense, useMemo, useState } from 'react'
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { GROUPS, GROUP_LETTERS } from './data/groups'
 import { rankGroup, groupStandings, groupComplete, groupRealComplete, incompleteGoalsTeams, thirdPlaceContenders, pointsOf, gdOf, predictedCount, nextMatchDate, minThirdPlacePoints, type ThirdGroupRow } from './standings'
 import { resolveBracket } from './bracketResolve'
 import { possibleGroupPositions, qualificationStatus, type QualStatus } from './scenarios'
 import { effectiveH2H } from './h2h'
 import { useStore } from './store'
+import { decodePredictions, hasAnyPicks, shareUrl } from './share'
 import { LAST_RESULTS_UPDATE } from './data/lastUpdate'
 import { GroupTable } from './components/GroupTable'
 import { ThirdPlacePanel } from './components/ThirdPlacePanel'
@@ -64,6 +65,48 @@ export function App() {
   const { predictions, predScores } = state
   const hasGroupPicks = Object.keys(predictions).length > 0 || Object.keys(predScores).length > 0
   const hasBracketPicks = Object.keys(state.bracketPredictions).length > 0
+  const hasPicks = hasGroupPicks || hasBracketPicks
+
+  // Import a shared prediction set from the `#p=` hash, once, on load. Reads the
+  // live store (not the closed-over render state) so the "viewer already has
+  // picks?" check reflects the just-hydrated persisted set.
+  const imported = useRef(false)
+  useEffect(() => {
+    if (imported.current) return
+    imported.current = true
+    const m = /[#&]p=([^&]+)/.exec(location.hash)
+    const strip = () => history.replaceState(null, '', location.pathname + location.search)
+    if (!m) return
+    const decoded = decodePredictions(decodeURIComponent(m[1]))
+    if (!decoded) return strip()
+    if (
+      hasAnyPicks(useStore.getState()) &&
+      !confirm('Replace your predictions with this shared set?')
+    )
+      return strip()
+    useStore.getState().importShared(decoded)
+    strip()
+  }, [])
+
+  const [shareMsg, setShareMsg] = useState<string | null>(null)
+  const handleShare = async () => {
+    const url = shareUrl(useStore.getState())
+    if (typeof navigator.share === 'function' && matchMedia('(pointer: coarse)').matches) {
+      try {
+        await navigator.share({ url, title: 'My World Cup 2026 predictions' })
+        return
+      } catch {
+        // user dismissed the share sheet, or it failed — fall through to copy
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url)
+      setShareMsg('Link copied')
+    } catch {
+      setShareMsg('Copy failed')
+    }
+    setTimeout(() => setShareMsg(null), 2500)
+  }
 
   // Team picked from the header search — opens its situation-analysis popup.
   const [searchTeam, setSearchTeam] = useState<string | null>(null)
@@ -197,6 +240,17 @@ export function App() {
         </div>
         <div className="header-side">
           <TeamSearch teams={SEARCH_TEAMS} onSelect={setSearchTeam} />
+          <div className="header-actions">
+            {shareMsg && <span className="share-toast" role="status">{shareMsg}</span>}
+            <button
+              className="btn"
+              disabled={!hasPicks}
+              onClick={handleShare}
+              title={hasPicks ? 'Copy a link that loads your predictions' : 'Make a prediction first'}
+            >
+              Share my predictions
+            </button>
+          </div>
         </div>
       </header>
 
