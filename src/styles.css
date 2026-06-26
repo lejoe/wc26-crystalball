@@ -158,8 +158,16 @@ button {
   padding: 7px 12px;
   font-size: 13px;
 }
-.btn:hover { border-color: var(--accent); }
+.btn:hover:not(:disabled) { border-color: var(--accent); }
+.btn:disabled { opacity: 0.4; cursor: default; }
 .btn-danger:hover { border-color: #e5484d; color: #ff7b7e; }
+
+.share-toast {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--advance-bd);
+  white-space: nowrap;
+}
 
 .section-title {
   display: flex;

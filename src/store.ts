@@ -26,6 +26,11 @@ type Store = AppState & {
   resetGroups: () => void
   /** Clear knockout-bracket picks; leaves group-stage results. */
   resetBracket: () => void
+  /**
+   * Replace the whole prediction set with a decoded shared one. Picks for matches
+   * already decided by a real result are silently dropped (real results win).
+   */
+  importShared: (data: Partial<AppState>) => void
 }
 
 export const useStore = create<Store>()(
@@ -71,6 +76,28 @@ export const useStore = create<Store>()(
 
       resetGroups: () => set({ predictions: {}, predScores: {} }),
       resetBracket: () => set({ bracketPredictions: {} }),
+
+      importShared: (data) =>
+        set(() => {
+          const predictions: Record<string, Outcome> = {}
+          for (const [key, outcome] of Object.entries(data.predictions ?? {})) {
+            const [g, i] = key.split(':')
+            if (isUpcoming(g as GroupLetter, Number(i)) && (outcome === 'home' || outcome === 'draw' || outcome === 'away'))
+              predictions[key] = outcome
+          }
+          const predScores: Record<string, PredScore> = {}
+          for (const [key, score] of Object.entries(data.predScores ?? {})) {
+            const [g, i] = key.split(':')
+            if (isUpcoming(g as GroupLetter, Number(i)) && score && Number.isFinite(score.hs) && Number.isFinite(score.as))
+              predScores[key] = { hs: score.hs, as: score.as }
+          }
+          const bracketPredictions: Record<number, Side> = {}
+          for (const [k, v] of Object.entries(data.bracketPredictions ?? {})) {
+            const id = Number(k)
+            if (!(id in BRACKET_RESULTS) && (v === 'a' || v === 'b')) bracketPredictions[id] = v
+          }
+          return { predictions, predScores, bracketPredictions }
+        }),
     }),
     {
       name: 'wc2026-prediction',
