@@ -92,8 +92,10 @@ function ThirdResult({ third }: { third: NonNullable<EndNode['third']> }) {
                   className={`${r.rank <= THIRDS_ADVANCE ? 'adv' : 'rout'} ${r.rank === THIRDS_ADVANCE ? 'cut' : ''} ${isMe ? 'me' : ''}`}
                 >
                   <span className="rr-n">{r.rank}</span>
-                  <span className="rr-flag">{flagOf(r.team)}</span>
-                  <span className="rr-team" title={r.team}>{r.team}</span>
+                  <span className="rr-flag">{r.toPlay ? '' : flagOf(r.team)}</span>
+                  <span className="rr-team" title={r.toPlay ? `Group ${r.group} third place not yet decided` : r.team}>
+                    {r.toPlay ? `Group ${r.group}` : r.team}
+                  </span>
                   {r.toPlay && <span className="rr-tp" title="still has a match to play">●</span>}
                   <span className="rr-pts">{r.points}</span>
                   <span className="rr-gd">{fmtGD(r.gd)}</span>
@@ -327,7 +329,7 @@ const SCENARIO_CSS = `
   .scn .rr-list li.me .rr-team{color:var(--info);}
   .scn .rr-list li.cut{border-bottom:1px dashed var(--txt3); padding-bottom:6px; margin-bottom:5px;}
   .scn .rr-n{min-width:13px; text-align:right; color:var(--txt3); font-size:10.5px;}
-  .scn .rr-flag{font-size:13px;}
+  .scn .rr-flag{font-size:13px; min-width:13px; flex:none; text-align:center;}
   .scn .rr-team{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--txt);}
   .scn .rr-tp{color:var(--info); font-size:8px; line-height:1;}
   .scn .rr-pts{min-width:14px; text-align:right; font-weight:700; color:var(--txt);}
