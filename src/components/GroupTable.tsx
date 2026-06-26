@@ -6,6 +6,7 @@ import { MatchesPanel } from './MatchesPanel'
 import type { GroupLetter, StatusTone } from '../types'
 import type { QualStatus } from '../scenarios'
 import type { Node } from '../scenarioTree'
+import { formatKickoff, useNow } from '../utils/datetime'
 
 type Props = {
   group: GroupLetter
@@ -16,7 +17,7 @@ type Props = {
   needsScores: boolean
   /** How many of the group's matches the user has predicted. */
   predicted: number
-  /** ISO date of the group's next not-yet-played match, or null. */
+  /** Kickoff instant (ISO with offset) of the group's next not-yet-played match, or null. */
   nextDate: string | null
   /** Per-row (aligned to `rows`): Through / In the balance / Out outlook. */
   qual: QualStatus[]
@@ -26,31 +27,9 @@ type Props = {
   scenarios?: Record<string, Node>
 }
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-
-/** "2026-06-24" → "24 Jun". */
-function shortDate(iso: string): string {
-  const [, m, d] = iso.split('-')
-  return `${Number(d)} ${MONTHS[Number(m) - 1]}`
-}
-
-/** Local YYYY-MM-DD for a date (matches the timezone-less fixture dates). */
-function localISO(d: Date): string {
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${m}-${day}`
-}
-
-/** "Today" / "Tomorrow" for the next two days, otherwise "24 Jun". */
-function relativeMatchDate(iso: string): { text: string; isToday: boolean } {
-  const now = new Date()
-  if (iso === localISO(now)) return { text: 'Today', isToday: true }
-  if (iso === localISO(new Date(now.getTime() + 86_400_000))) return { text: 'Tomorrow', isToday: false }
-  return { text: shortDate(iso), isToday: false }
-}
-
 export function GroupTable({ group, rows, complete, realComplete, needsScores, predicted, nextDate, qual, tones, scenarios }: Props) {
   const [showMatches, setShowMatches] = useState(false)
+  const now = useNow()
   // The team whose interactive analysis modal is open.
   const [modalTeam, setModalTeam] = useState<string | null>(null)
 
@@ -62,7 +41,7 @@ export function GroupTable({ group, rows, complete, realComplete, needsScores, p
   const scoreTeams = complete
     ? new Set(rows.filter((r) => r.needsScores).map((r) => r.standing.team))
     : new Set<string>()
-  const next = nextDate ? relativeMatchDate(nextDate) : null
+  const next = nextDate ? formatKickoff(nextDate, false, now) : null
 
   return (
     <div className={`group-card ${complete ? 'finalized' : ''} ${complete && !realComplete ? 'predicted-final' : ''}`}>

@@ -153,12 +153,12 @@ export function predictedCount(
   return n
 }
 
-/** ISO date (YYYY-MM-DD) of the group's next not-yet-played match, or null. */
+/** Kickoff instant (ISO with offset) of the group's next not-yet-played match, or null. */
 export function nextMatchDate(group: GroupLetter): string | null {
   let best: string | null = null
   for (const f of FIXTURES[group]) {
     if (f.hs !== null && f.as !== null) continue // already played
-    if (best === null || f.date < best) best = f.date
+    if (best === null || Date.parse(f.kickoff) < Date.parse(best)) best = f.kickoff
   }
   return best
 }

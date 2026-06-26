@@ -256,6 +256,11 @@ export function App() {
         </button>
       </div>
       <Bracket views={bracketViews} />
+      <div className="legend bracket-legend">
+        <span className="chip"><span className="swatch" style={{ background: 'var(--advance-bd)' }} /> Confirmed</span>
+        <span className="chip"><span className="swatch" style={{ background: 'var(--third-bd)' }} /> Prediction</span>
+        <span className="chip"><span className="swatch" style={{ background: 'var(--out)' }} /> Eliminated</span>
+      </div>
 
       <footer className="app-footer">
         <time
