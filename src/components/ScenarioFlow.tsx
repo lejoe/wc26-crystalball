@@ -92,8 +92,10 @@ function ThirdResult({ third }: { third: NonNullable<EndNode['third']> }) {
                   className={`${r.rank <= THIRDS_ADVANCE ? 'adv' : 'rout'} ${r.rank === THIRDS_ADVANCE ? 'cut' : ''} ${isMe ? 'me' : ''}`}
                 >
                   <span className="rr-n">{r.rank}</span>
-                  <span className="rr-flag">{flagOf(r.team)}</span>
-                  <span className="rr-team" title={r.team}>{r.team}</span>
+                  <span className="rr-flag">{r.toPlay ? '' : flagOf(r.team)}</span>
+                  <span className="rr-team" title={r.toPlay ? `Group ${r.group} third place not yet decided` : r.team}>
+                    {r.toPlay ? `Group ${r.group}` : r.team}
+                  </span>
                   {r.toPlay && <span className="rr-tp" title="still has a match to play">●</span>}
                   <span className="rr-pts">{r.points}</span>
                   <span className="rr-gd">{fmtGD(r.gd)}</span>
