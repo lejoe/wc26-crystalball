@@ -5,8 +5,9 @@ import { BRACKET_RESULTS } from '../data/bracketResults'
 import type { MatchView, SlotView } from '../bracketResolve'
 import { useStore } from '../store'
 import type { Side } from '../types'
-import { useRef, type Ref } from 'react'
+import { useLayoutEffect, useRef, useState, type Ref } from 'react'
 import { ChampionConfetti } from './ChampionConfetti'
+import { kickoffParts, useNow } from '../utils/datetime'
 
 type PopSide = 'left' | 'right'
 
@@ -111,17 +112,74 @@ function Slot({
   )
 }
 
-function MatchCard({ matchView, final, popSide }: { matchView: MatchView; final?: boolean; popSide: PopSide }) {
+// Shared canvas for measuring text against the card width without reflow.
+let measureCtx: CanvasRenderingContext2D | null = null
+function textWidth(text: string, font: string): number {
+  if (!measureCtx) measureCtx = document.createElement('canvas').getContext('2d')
+  if (!measureCtx) return 0
+  measureCtx.font = font
+  return measureCtx.measureText(text).width
+}
+
+/**
+ * Kickoff strip sized for the narrow bracket card: the full date (with weekday)
+ * and compact time on one line when they fit, otherwise stacked on two lines.
+ * Connectors anchor to the equal-height cells, so varying card heights stay aligned.
+ */
+function BracketDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: boolean; now: Date }) {
+  const parts = kickoffParts(kickoff, hasResult, now)
+  const ref = useRef<HTMLDivElement>(null)
+  const dateRef = useRef<HTMLSpanElement>(null)
+  const [oneLine, setOneLine] = useState(false)
+
+  useLayoutEffect(() => {
+    if (parts.status !== 'upcoming') return
+    const el = ref.current
+    const dateEl = dateRef.current
+    if (!el || !dateEl) return
+    const measure = () => {
+      const elCs = getComputedStyle(el)
+      // Small margin absorbs the separator padding and weight differences between lines.
+      const avail = el.clientWidth - parseFloat(elCs.paddingLeft) - parseFloat(elCs.paddingRight) - 3
+      const dCs = getComputedStyle(dateEl)
+      const font = `${dCs.fontWeight} ${dCs.fontSize} ${dCs.fontFamily}`
+      setOneLine(textWidth(`${parts.weekdayDate} · ${parts.time}`, font) <= avail)
+    }
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [parts.weekdayDate, parts.time, parts.status])
+
+  if (parts.status !== 'upcoming') {
+    return (
+      <div ref={ref} className={`match-date status-${parts.status}`}>
+        {parts.status === 'live' && <span className="live-dot" aria-hidden="true" />}
+        {parts.stateText}
+      </div>
+    )
+  }
+  return (
+    <div ref={ref} className={`match-date status-upcoming ${parts.isToday ? 'is-today' : ''} ${oneLine ? 'oneline' : ''}`}>
+      <span ref={dateRef} className="md-date">{parts.weekdayDate}</span>
+      <span className="md-sep" aria-hidden="true">·</span>
+      <span className="md-time">{parts.time}</span>
+    </div>
+  )
+}
+
+function MatchCard({ matchView, final, popSide, now }: { matchView: MatchView; final?: boolean; popSide: PopSide; now: Date }) {
   const def = MATCH_BY_ID[matchView.def.id]
   return (
     <div className={`match ${final ? 'match-final' : ''}`}>
+      <BracketDate kickoff={def.kickoff} hasResult={def.id in BRACKET_RESULTS} now={now} />
       <Slot view={matchView.a} matchId={def.id} side="a" matchView={matchView} popSide={popSide} />
       <Slot view={matchView.b} matchId={def.id} side="b" matchView={matchView} popSide={popSide} />
     </div>
   )
 }
 
-function BracketColumn({ col, side, views }: { col: Col; side: 'left' | 'right'; views: Record<number, MatchView> }) {
+function BracketColumn({ col, side, views, now }: { col: Col; side: 'left' | 'right'; views: Record<number, MatchView>; now: Date }) {
   const popSide: PopSide = side === 'left' ? 'right' : 'left'
   return (
     <div className={`bcol half-${side} ${col.ids.length > 1 ? 'multi' : ''}`}>
@@ -132,7 +190,7 @@ function BracketColumn({ col, side, views }: { col: Col; side: 'left' | 'right';
       <div className="bcol-matches">
         {col.ids.map((id) => (
           <div className="bcell" key={id}>
-            <MatchCard matchView={views[id]} popSide={popSide} />
+            <MatchCard matchView={views[id]} popSide={popSide} now={now} />
           </div>
         ))}
       </div>
@@ -202,11 +260,11 @@ function Podium({ views, championRef }: { views: Record<number, MatchView>; cham
   )
 }
 
-export function ThirdPlacePlayoff({ views }: Props) {
+export function ThirdPlacePlayoff({ views, now }: Props & { now: Date }) {
   return (
     <div className="third-play-off">
       <div className="col-label">Third-place</div>
-      <MatchCard matchView={views[103]} popSide="right" />
+      <MatchCard matchView={views[103]} popSide="right" now={now} />
     </div>
   )
 }
@@ -216,23 +274,24 @@ export function Bracket({ views }: Props) {
   const champSlot = final?.winnerSide === 'a' ? final.a : final?.winnerSide === 'b' ? final.b : null
   const champion = champSlot?.team ?? null
   const championRef = useRef<HTMLDivElement>(null)
+  const now = useNow()
   return (
     <div className="bracket-scroll">
       <div className="bracket2">
         <ChampionConfetti originRef={championRef} champion={champion} />
         <div className="bhalf bhalf-left">
           {LEFT.map((col) => (
-            <BracketColumn key={`L-${col.round}`} col={col} side="left" views={views} />
+            <BracketColumn key={`L-${col.round}`} col={col} side="left" views={views} now={now} />
           ))}
         </div>
 
         <div className="bcol bcol-center">
           <div className="col-label final-label" aria-hidden="true">{' '}</div>
           <div className="final-stack">
-            <ThirdPlacePlayoff views={views} />
+            <ThirdPlacePlayoff views={views} now={now} />
             <div className="final-block">
               <div className="col-label final-match-label">Final</div>
-              <MatchCard matchView={views[104]} final popSide="right" />
+              <MatchCard matchView={views[104]} final popSide="right" now={now} />
             </div>
             <Podium views={views} championRef={championRef} />
           </div>
@@ -240,7 +299,7 @@ export function Bracket({ views }: Props) {
 
         <div className="bhalf bhalf-right">
           {RIGHT.map((col) => (
-            <BracketColumn key={`R-${col.round}`} col={col} side="right" views={views} />
+            <BracketColumn key={`R-${col.round}`} col={col} side="right" views={views} now={now} />
           ))}
         </div>
       </div>

@@ -273,16 +273,29 @@ button {
 }
 .match-row {
   display: grid;
-  grid-template-columns: 28px 1fr auto 1fr;
+  grid-template-columns: 46px 1fr auto 1fr;
   align-items: center;
   gap: 5px;
   padding: 3px 0;
   font-size: 12px;
 }
 .match-row .fx-date {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
   font-size: 9px;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+.match-row .fx-date .fx-time { color: var(--text); font-weight: 600; }
+.match-row .fx-date.is-today .fx-day { color: var(--text); font-weight: 700; }
+.match-row .fx-date.status-over .fx-state { font-weight: 700; letter-spacing: 0.03em; }
+.match-row .fx-date.status-live .fx-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--out);
+  font-weight: 700;
 }
 .m-team { display: flex; align-items: center; gap: 4px; min-width: 0; color: var(--muted); }
 .m-team .ab { overflow: hidden; text-overflow: ellipsis; }
@@ -291,7 +304,7 @@ button {
 .m-score { font-weight: 700; font-variant-numeric: tabular-nums; text-align: center; }
 
 /* Predicted match row: outcome picker + optional exact score. */
-.match-row.predict { grid-template-columns: 28px 1fr; row-gap: 4px; }
+.match-row.predict { grid-template-columns: 46px 1fr; row-gap: 4px; }
 .pick-group { display: grid; grid-template-columns: 1fr auto 1fr; gap: 3px; align-items: center; }
 .score-group { grid-column: 2; display: flex; align-items: center; justify-content: center; gap: 5px; }
 .score-group .dash { color: var(--muted); }
@@ -735,6 +748,57 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
   border-radius: 8px;
 }
 .match .slot:last-child { border-bottom-left-radius: 7px; border-bottom-right-radius: 7px; }
+
+/* Per-tie kickoff strip atop a bracket card: date over compact time (or LIVE / FT).
+   Two fixed lines keep every card the same height so the bracket stays aligned. */
+.match-date {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 4px 7px;
+  font-size: 9px;
+  line-height: 1.3;
+  color: var(--muted);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  border-radius: 7px 7px 0 0;
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+}
+.match-date .md-date,
+.match-date .md-time { white-space: nowrap; }
+/* Both lines stay quiet by default — kickoff is reference info, the teams are
+   the content. Only today/live earn brighter emphasis below. */
+.match-date .md-time { color: var(--muted); font-weight: 500; }
+.match-date.is-today .md-date { color: var(--text); font-weight: 700; }
+.match-date.is-today .md-time { color: var(--text); font-weight: 600; }
+/* Separator only appears in the one-line layout. */
+.match-date .md-sep { display: none; color: var(--muted); }
+.match-date.oneline { flex-direction: row; gap: 0; }
+.match-date.oneline .md-sep { display: inline; padding: 0 0.3em; }
+/* Align the strip to the same edge as the card sits on in each half. */
+.half-left .match-date { align-items: flex-start; text-align: left; }
+.half-left .match-date.oneline { justify-content: flex-start; }
+.half-right .match-date { align-items: flex-end; text-align: right; }
+.half-right .match-date.oneline { justify-content: flex-end; }
+/* LIVE / FT collapse back to a single centered row. */
+.match-date.status-over,
+.match-date.status-live { flex-direction: row; gap: 4px; font-weight: 700; letter-spacing: 0.05em; }
+.match-date.status-over { opacity: 0.7; }
+.match-date.status-live { color: var(--out); }
+
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--out);
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
 .slot {
   position: relative;
   display: flex;
@@ -777,12 +841,18 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .half-right .match .slot:first-child.entry-pred::before { border-top-left-radius: 0; border-top-right-radius: 7px; }
 .half-right .match .slot:last-child.entry-real::before,
 .half-right .match .slot:last-child.entry-pred::before { border-bottom-left-radius: 0; border-bottom-right-radius: 7px; }
-.slot.eliminated { opacity: 0.4; }
+/* Losing side of a decided tie: dim its contents but keep a vivid red source
+   bar, matching the eliminated colour from the group phase. */
+.slot.eliminated { background: var(--panel); }
+.slot.eliminated > * { opacity: 0.4; }
+.slot.eliminated.entry-real::before,
+.slot.eliminated.entry-pred::before { background: var(--out); }
 .slot .flag { font-size: 14px; }
 .slot .slot-team { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.slot .slot-label { color: var(--muted); font-size: 11px; }
+/* Undecided placeholders ("1st H", "3rd A/B/…") read the same as a decided team. */
+.slot .slot-label { color: var(--text); font-size: 13px; }
 .slot-unknown { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; }
-.slot-unknown .slot-label { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.slot-unknown .slot-label { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .q-badge {
   display: inline-flex;
   align-items: center;
@@ -917,6 +987,8 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .h2h-tag.pending { color: var(--muted); border-color: var(--line); }
 .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin: 8px auto 0; max-width: 1180px; }
+/* The bracket spans full width, so its legend hugs the left edge instead of centring. */
+.legend.bracket-legend { margin: 8px 0 0; max-width: none; }
 .legend .chip { display: inline-flex; align-items: center; gap: 6px; }
 .legend .swatch { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
 

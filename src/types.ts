@@ -43,6 +43,8 @@ export type MatchDef = {
   round: Round
   a: SlotSource
   b: SlotSource
+  /** Kickoff as an ISO 8601 instant with venue UTC offset, e.g. 2026-06-28T12:00:00-07:00. */
+  kickoff: string
 }
 
 /** Advancement bucket for a team, certified by points + head-to-head only. */

@@ -3,17 +3,39 @@ import { abbrOf, flagOf } from '../data/groups'
 import { FIXTURES, resultKey, type Fixture } from '../data/fixtures'
 import { useStore } from '../store'
 import type { GroupLetter, Outcome } from '../types'
+import { formatKickoff, useNow } from '../utils/datetime'
+
+function FxDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: boolean; now: Date }) {
+  const d = formatKickoff(kickoff, hasResult, now)
+  return (
+    <span className={`fx-date status-${d.status} ${d.isToday ? 'is-today' : ''}`}>
+      {d.status === 'upcoming' ? (
+        <>
+          <span className="fx-day">{d.dateText}</span>
+          <span className="fx-time">{d.time}</span>
+        </>
+      ) : (
+        <span className="fx-state">
+          {d.status === 'live' && <span className="live-dot" aria-hidden="true" />}
+          {d.text}
+        </span>
+      )}
+    </span>
+  )
+}
 
 function PredictRow({
   group,
   index,
   fixture,
   scoreTeams,
+  now,
 }: {
   group: GroupLetter
   index: number
   fixture: Fixture
   scoreTeams: Set<string>
+  now: Date
 }) {
   const key = resultKey(group, index)
   const outcome = useStore((s) => s.predictions[key])
@@ -61,7 +83,7 @@ function PredictRow({
 
   return (
     <div className="match-row predict">
-      <span className="fx-date">{fixture.date.slice(5)}</span>
+      <FxDate kickoff={fixture.kickoff} hasResult={false} now={now} />
       <div className="pick-group">
         <button className={cls('home')} title={fixture.home} onClick={() => pick('home')}>
           <span className="ab">{abbrOf(fixture.home)}</span>
@@ -85,6 +107,7 @@ function PredictRow({
 }
 
 export function MatchesPanel({ group, scoreTeams }: { group: GroupLetter; scoreTeams: Set<string> }) {
+  const now = useNow()
   return (
     <div className="match-list">
       {FIXTURES[group].map((f, i) => {
@@ -94,7 +117,7 @@ export function MatchesPanel({ group, scoreTeams }: { group: GroupLetter; scoreT
           const awayWon = (f.as as number) > (f.hs as number)
           return (
             <div className="match-row played" key={i}>
-              <span className="fx-date">{f.date.slice(5)}</span>
+              <FxDate kickoff={f.kickoff} hasResult={true} now={now} />
               <span className={`m-team home ${homeWon ? 'won' : ''}`} title={f.home}>
                 <span className="ab">{abbrOf(f.home)}</span>
                 <span className="flag">{flagOf(f.home)}</span>
@@ -107,7 +130,7 @@ export function MatchesPanel({ group, scoreTeams }: { group: GroupLetter; scoreT
             </div>
           )
         }
-        return <PredictRow key={i} group={group} index={i} fixture={f} scoreTeams={scoreTeams} />
+        return <PredictRow key={i} group={group} index={i} fixture={f} scoreTeams={scoreTeams} now={now} />
       })}
     </div>
   )
