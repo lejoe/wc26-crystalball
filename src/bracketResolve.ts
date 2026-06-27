@@ -1,4 +1,5 @@
 import { MATCHES } from './data/bracket'
+import { THIRD_PLACE_ALLOCATION } from './data/thirdPlaceAllocation'
 import { BRACKET_RESULTS } from './data/bracketResults'
 import { FIXTURES } from './data/fixtures'
 import { GROUP_LETTERS } from './data/groups'
@@ -53,43 +54,28 @@ function slotLabel(src: SlotSource): string {
   }
 }
 
-/** The eight R32 third-place slots with their FIFA-allowed source groups. */
-const THIRD_SLOT_DEFS = MATCHES.flatMap((m) =>
-  [m.a, m.b].filter((s): s is Extract<SlotSource, { kind: 'third' }> => s.kind === 'third'),
-).map((s) => ({ slot: s.slot, groups: s.groups }))
-
 /**
- * Assign the 8 best third-placed teams to the 8 R32 third-place slots,
- * respecting each slot's FIFA-allowed groups (bipartite perfect matching).
- * Returns {} when fewer than 8 thirds are known or no valid assignment exists.
+ * Assign the 8 best third-placed teams to the 8 R32 third-place slots using
+ * FIFA's official Annexe C allocation table, keyed by the set of qualifying
+ * third-place groups. Returns {} when fewer than 8 thirds are known or the
+ * combination is absent from the table.
  */
 function assignThirds(thirdRanked: ThirdPlaceRow[]): Record<string, string> {
   const top8 = thirdRanked.slice(0, 8)
   if (top8.length < 8) return {}
 
-  const slots = THIRD_SLOT_DEFS
-  const teams = top8.map((t) => ({ team: t.standing.team, group: t.group }))
-  const matchTeam = new Array<number>(teams.length).fill(-1) // teamIdx -> slotIdx
+  const combo = top8
+    .map((t) => t.group)
+    .sort()
+    .join('')
+  const slotToGroup = THIRD_PLACE_ALLOCATION[combo]
+  if (!slotToGroup) return {}
 
-  const tryAssign = (si: number, seen: boolean[]): boolean => {
-    for (let ti = 0; ti < teams.length; ti++) {
-      if (!slots[si].groups.includes(teams[ti].group) || seen[ti]) continue
-      seen[ti] = true
-      if (matchTeam[ti] === -1 || tryAssign(matchTeam[ti], seen)) {
-        matchTeam[ti] = si
-        return true
-      }
-    }
-    return false
-  }
-
-  for (let si = 0; si < slots.length; si++) {
-    if (!tryAssign(si, new Array(teams.length).fill(false))) return {} // no perfect matching
-  }
-
+  const teamByGroup = new Map<GroupLetter, string>(top8.map((t) => [t.group, t.standing.team]))
   const out: Record<string, string> = {}
-  for (let ti = 0; ti < teams.length; ti++) {
-    if (matchTeam[ti] !== -1) out[slots[matchTeam[ti]].slot] = teams[ti].team
+  for (const [slot, group] of Object.entries(slotToGroup)) {
+    const team = teamByGroup.get(group)
+    if (team) out[slot] = team
   }
   return out
 }
