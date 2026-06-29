@@ -21,4 +21,7 @@ export type BracketResult = {
   pens?: { a: number; b: number }
 }
 
-export const BRACKET_RESULTS: Record<number, BracketResult> = {}
+export const BRACKET_RESULTS: Record<number, BracketResult> = {
+  // R32 #73 — South Africa (A2, slot a) 0–1 Canada (B2, slot b)
+  73: { hs: 0, as: 1 },
+}
