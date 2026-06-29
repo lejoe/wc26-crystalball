@@ -17,10 +17,20 @@ deliberately preserved; a real result overrides only its own match at runtime).
 - `src/data/fixtures.ts` — group stage. `FIXTURES[group][index]` rows. A match
   is "played" when both `hs` (home score) and `as` (away score) are non-null.
   Updating = filling those two numbers.
-- `src/data/bracketResults.ts` — knockout. `BRACKET_RESULTS: Record<matchId, { hs; as }>`.
+- `src/data/bracketResults.ts` — knockout.
+  `BRACKET_RESULTS: Record<matchId, { hs; as; aet?; pens? }>`.
   Key = matchId 73–104 (see `src/data/bracket.ts`). **`hs` = score of the team in
   slot `a`, `as` = score of the team in slot `b`** — oriented to the bracket
   slots, not raw home/away. Empty until the knockout stage starts.
+  - `hs`/`as` hold the score **after extra time** (ET goals included).
+  - Extra time: add `aet: true` (e.g. `{ hs: 3, as: 2, aet: true }`).
+  - Shootout: a knockout can't end level, so put the (level) 120' score in
+    `hs`/`as` and the shootout in `pens: { a, b }` — slot-oriented the same way
+    (`pens.a` = slot a's shootout score), e.g.
+    `{ hs: 2, as: 2, aet: true, pens: { a: 4, b: 3 } }`. The advancing side is
+    **derived** from these (higher `hs`/`as`, or higher `pens` when level) — never
+    pick the winner by hand. A level `hs`/`as` with no `pens` is treated as not yet
+    decided.
 
 Files you read for mapping/orientation, never edit here:
 `src/data/groups.ts` (canonical team spellings + groups), `src/data/bracket.ts`
@@ -87,6 +97,9 @@ real home score to `hs`, away to `as`.
 3. Orient: figure out which fetched team sits in slot `a` vs slot `b` (from the
    bracket structure + real standings). Write that team's score to `hs`, the
    other to `as`. **Wrong orientation inverts the bracket** — double-check.
+   Knockout only: if the match went to extra time, write the after-ET score and
+   add `aet: true`; if it went to a shootout, the (level) ET score goes in
+   `hs`/`as` and the shootout in `pens: { a, b }` (slot-oriented like `hs`/`as`).
 
 ### 4. Fuzzy-match team names
 - Every fetched team name that does **not exactly** match the `groups.ts`
@@ -98,7 +111,8 @@ real home score to `hs`, away to `as`.
 ### 5. Write the edits
 - Group stage: replace the two trailing `null`s in the `F(...)` row (or the
   explicit `hs`/`as`) with the real scores.
-- Knockout: add `id: { hs, as }` entries to `BRACKET_RESULTS`.
+- Knockout: add `id: { hs, as }` entries to `BRACKET_RESULTS` (plus `aet`/`pens`
+  for extra-time/shootout matches).
 - If you wrote at least one result, set `LAST_RESULTS_UPDATE` in
   `src/data/lastUpdate.ts` to the current UTC time as ISO 8601 (e.g.
   `2026-06-21T14:27:30Z`). Leave it unchanged on a no-op run.

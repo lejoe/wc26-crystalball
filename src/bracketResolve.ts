@@ -1,6 +1,6 @@
 import { MATCHES } from './data/bracket'
 import { THIRD_PLACE_ALLOCATION } from './data/thirdPlaceAllocation'
-import { BRACKET_RESULTS } from './data/bracketResults'
+import { BRACKET_RESULTS, type BracketResult } from './data/bracketResults'
 import { FIXTURES } from './data/fixtures'
 import { GROUP_LETTERS } from './data/groups'
 import {
@@ -138,6 +138,18 @@ function thirdSlot(
 }
 
 /**
+ * Advancing side from a real knockout result. A knockout can't end level, so an
+ * equal `hs`/`as` (the 120' score) is decided by the shootout. A level score with
+ * no `pens` recorded means the match isn't fully resolved yet → null, so the
+ * caller falls back to the user's pick rather than crowning slot `b` by default.
+ */
+function realSideOf(r: BracketResult): Side | null {
+  if (r.hs !== r.as) return r.hs > r.as ? 'a' : 'b'
+  if (r.pens) return r.pens.a > r.pens.b ? 'a' : 'b'
+  return null
+}
+
+/**
  * Resolve every match: who fills each slot, and the advancing side.
  *
  * Picks are path-based: stored by side ('a'/'b'), never by team. A pick rides
@@ -227,7 +239,7 @@ export function resolveBracket(state: AppState): Record<number, MatchView> {
     const stored = state.bracketPredictions[def.id]
     const pick: Side | null = stored === 'a' || stored === 'b' ? stored : null
     const real = BRACKET_RESULTS[def.id]
-    const realSide: Side | null = real ? (real.hs > real.as ? 'a' : 'b') : null
+    const realSide: Side | null = real ? realSideOf(real) : null
     realWinner[def.id] = realSide != null
     const winnerSide = realSide ?? pick
     views[def.id] = { def, a, b, winnerSide }

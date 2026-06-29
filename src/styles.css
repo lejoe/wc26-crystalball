@@ -871,6 +871,24 @@ table.standings tr.cut-row td { padding: 0; border-bottom: none; }
 .slot.eliminated.entry-pred::before { background: var(--out); }
 .slot .flag { font-size: 14px; }
 .slot .slot-team { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Real-result scoreline, pinned to the card's inner edge (mirrored on the right
+   half via the slot's row-reverse). Tabular figures keep digits aligned. */
+.slot .slot-score {
+  flex: none;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.slot.winner .slot-score { color: var(--advance-bd); }
+.slot .slot-pens { font-size: 0.82em; font-weight: 600; color: var(--muted); }
+.slot .slot-pens::before { content: '('; }
+.slot .slot-pens::after { content: ')'; }
+/* Extra-time / shootout marker appended to the "FT" strip. */
+.match-date .result-tag { font-weight: 600; opacity: 0.85; text-transform: none; letter-spacing: 0; }
+.match-date .result-tag::before { content: '·'; margin: 0 0.35em; opacity: 0.6; }
 /* Undecided placeholders ("1st H", "3rd A/B/…") read the same as a decided team. */
 .slot .slot-label { color: var(--text); font-size: 13px; }
 .slot-unknown { display: flex; align-items: center; justify-content: space-between; gap: 6px; width: 100%; min-width: 0; }
