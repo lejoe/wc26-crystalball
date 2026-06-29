@@ -5,4 +5,7 @@
  * the user's path-based pick for that match in `resolveBracket`. Empty until the
  * knockout stage starts. Mirrors the group-stage real-over-prediction priority.
  */
-export const BRACKET_RESULTS: Record<number, { hs: number; as: number }> = {}
+export const BRACKET_RESULTS: Record<number, { hs: number; as: number }> = {
+  // R32 #73 — South Africa (A2, slot a) 0–1 Canada (B2, slot b)
+  73: { hs: 0, as: 1 },
+}
