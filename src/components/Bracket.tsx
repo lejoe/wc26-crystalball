@@ -49,7 +49,11 @@ function Slot({
   const isWinner = matchView.winnerSide === side
   const isEliminated = matchView.winnerSide != null && !isWinner
   const hasCands = !view.team && view.candidates.length > 0
-  const locked = matchId in BRACKET_RESULTS // real result decided this match
+  const result = BRACKET_RESULTS[matchId] // present only for a real result
+  const locked = result != null // real result decided this match
+  // Scores show for real results only; predictions stay scoreless.
+  const score = result ? (side === 'a' ? result.hs : result.as) : null
+  const pens = result?.pens ? (side === 'a' ? result.pens.a : result.pens.b) : null
 
   // Advancing: real knockout result → solid; user prediction → dotted.
   const winnerCls = isWinner ? (locked ? 'winner winner-real' : 'winner winner-pred') : ''
@@ -69,6 +73,12 @@ function Slot({
         <>
           <span className="flag">{flagOf(view.team)}</span>
           <span className="slot-team">{abbrOf(view.team)}</span>
+          {score != null && (
+            <span className="slot-score">
+              {score}
+              {pens != null && <span className="slot-pens">{pens}</span>}
+            </span>
+          )}
         </>
       ) : (
         <div className="slot-unknown">
@@ -126,7 +136,7 @@ function textWidth(text: string, font: string): number {
  * and compact time on one line when they fit, otherwise stacked on two lines.
  * Connectors anchor to the equal-height cells, so varying card heights stay aligned.
  */
-function BracketDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: boolean; now: Date }) {
+function BracketDate({ kickoff, hasResult, resultTag, now }: { kickoff: string; hasResult: boolean; resultTag?: string; now: Date }) {
   const parts = kickoffParts(kickoff, hasResult, now)
   const ref = useRef<HTMLDivElement>(null)
   const dateRef = useRef<HTMLSpanElement>(null)
@@ -156,6 +166,7 @@ function BracketDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: 
       <div ref={ref} className={`match-date status-${parts.status}`}>
         {parts.status === 'live' && <span className="live-dot" aria-hidden="true" />}
         {parts.stateText}
+        {resultTag && <span className="result-tag">{resultTag}</span>}
       </div>
     )
   }
@@ -170,9 +181,12 @@ function BracketDate({ kickoff, hasResult, now }: { kickoff: string; hasResult: 
 
 function MatchCard({ matchView, final, popSide, now }: { matchView: MatchView; final?: boolean; popSide: PopSide; now: Date }) {
   const def = MATCH_BY_ID[matchView.def.id]
+  const result = BRACKET_RESULTS[def.id]
+  // Penalties imply extra time, so a shootout reads "pens"; a goal-decided ET reads "a.e.t.".
+  const resultTag = result?.pens ? 'pens' : result?.aet ? 'a.e.t.' : undefined
   return (
     <div className={`match ${final ? 'match-final' : ''}`}>
-      <BracketDate kickoff={def.kickoff} hasResult={def.id in BRACKET_RESULTS} now={now} />
+      <BracketDate kickoff={def.kickoff} hasResult={def.id in BRACKET_RESULTS} resultTag={resultTag} now={now} />
       <Slot view={matchView.a} matchId={def.id} side="a" matchView={matchView} popSide={popSide} />
       <Slot view={matchView.b} matchId={def.id} side="b" matchView={matchView} popSide={popSide} />
     </div>
