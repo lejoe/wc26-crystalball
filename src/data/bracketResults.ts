@@ -24,4 +24,10 @@ export type BracketResult = {
 export const BRACKET_RESULTS: Record<number, BracketResult> = {
   // R32 #73 — South Africa (A2, slot a) 0–1 Canada (B2, slot b)
   73: { hs: 0, as: 1 },
+  // R32 #74 — Germany (E1, slot a) 1–1 Paraguay (T74/D3, slot b), Paraguay win 4–3 on pens
+  74: { hs: 1, as: 1, aet: true, pens: { a: 3, b: 4 } },
+  // R32 #75 — Netherlands (F1, slot a) 1–1 Morocco (C2, slot b), Morocco win 3–2 on pens
+  75: { hs: 1, as: 1, aet: true, pens: { a: 2, b: 3 } },
+  // R32 #76 — Brazil (C1, slot a) 2–1 Japan (F2, slot b)
+  76: { hs: 2, as: 1 },
 }
