@@ -3,4 +3,4 @@
  * ISO 8601 (UTC). The `update-results` skill rewrites this on every run that
  * writes a result. Shown in the header.
  */
-export const LAST_RESULTS_UPDATE = '2026-06-30T00:00:00Z'
+export const LAST_RESULTS_UPDATE = '2026-07-02T00:00:00Z'
