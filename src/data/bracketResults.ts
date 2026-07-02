@@ -38,4 +38,8 @@ export const BRACKET_RESULTS: Record<number, BracketResult> = {
   79: { hs: 2, as: 0 },
   // R32 #80 — England (L1, slot a) 2–1 Congo DR (K3/T80, slot b)
   80: { hs: 2, as: 1 },
+  // R32 #81 — United States (D1, slot a) 2–0 Bosnia and Herzegovina (B3/T81, slot b)
+  81: { hs: 2, as: 0 },
+  // R32 #82 — Belgium (G1, slot a) 3–2 Senegal (I3/T82, slot b) after extra time
+  82: { hs: 3, as: 2, aet: true },
 }
